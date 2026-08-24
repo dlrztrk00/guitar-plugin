@@ -22,7 +22,7 @@ juce_add_plugin(SoundBox
   BUNDLE_ID com.dilara.soundbox
   PLUGIN_MANUFACTURER_CODE Dlra
   PLUGIN_CODE Sbx1
-  FORMATS AU Standalone
+  FORMATS AU VST3 Standalone
   IS_SYNTH FALSE
   NEEDS_MIDI_INPUT FALSE
   NEEDS_MIDI_OUTPUT FALSE

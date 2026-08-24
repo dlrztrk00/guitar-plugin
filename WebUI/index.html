@@ -5,169 +5,297 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>SoundBox</title>
 <style>
-  :root { --accent:#e8b64c; --ink:#c6ccd4; --panel:#14171b; --bg:#0b0d10; }
+  :root { --accent:#e8b64c; --ink:#c6ccd4; --bg:#0b0d10; }
   * { box-sizing:border-box; }
   html,body { margin:0; height:100%; }
   body {
     background:
-      radial-gradient(700px 380px at 50% -10%, rgba(255,226,170,.06), transparent 60%),
-      var(--bg);
+      radial-gradient(600px 320px at 50% 30%, rgba(255,226,170,.06), transparent 62%),
+      linear-gradient(180deg,#0a0c10 0%,#0b0d10 55%,#151009 100%);
     color:var(--ink);
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    user-select:none; -webkit-user-select:none;
+    user-select:none; -webkit-user-select:none; overflow-x:hidden;
+  }
+  .wrap { padding:12px 14px 18px; max-width:440px; margin:0 auto; }
+  header { display:flex; align-items:baseline; gap:.5rem; }
+  h1 { font-size:1.05rem; margin:0; letter-spacing:-.02em; color:#eef1f4; }
+  h1 .a { color:var(--accent); }
+  .sub { font-size:.58rem; color:#7f8a78; }
+
+  /* pickers */
+  .pickers { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
+  .pick { display:flex; align-items:center; gap:6px; }
+  .pick span { font-size:.58rem; letter-spacing:.14em; color:#7f8a78; }
+  select {
+    appearance:none; -webkit-appearance:none;
+    background:color-mix(in oklab, var(--accent) 12%, #14171a);
+    color:#eef1f4; border:1px solid var(--accent); border-radius:8px;
+    padding:5px 22px 5px 9px; font-family:inherit; font-size:.72rem; cursor:pointer;
+    box-shadow:0 0 12px -6px var(--accent);
+  }
+
+  /* amp head */
+  .amp {
+    border-radius:12px 12px 5px 5px; padding:12px 12px 12px; margin-top:4px;
+    background:var(--chassis, linear-gradient(#20272a,#12181a));
+    border:1px solid rgba(0,0,0,.65);
+    box-shadow:0 14px 28px -18px rgba(0,0,0,.9), inset 0 2px 0 rgba(255,255,255,.10), inset 0 -3px 10px rgba(0,0,0,.5);
+  }
+  .amp-top { display:flex; align-items:center; justify-content:space-between; padding:0 4px 8px; }
+  .logo { font-size:.8rem; font-weight:800; letter-spacing:.24em; color:#eef1f4; }
+  .logo span { color:var(--accent); }
+  .jewel { width:12px; height:12px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, color-mix(in oklab,var(--accent) 70%,white), var(--accent));
+    box-shadow:0 0 8px var(--accent), 0 0 14px var(--accent); }
+  .amp-panel {
+    border-radius:8px; padding:10px 8px 8px;
+    background:linear-gradient(#20232a,#14161b), repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px);
+    border:1px solid rgba(0,0,0,.6); box-shadow:inset 0 1px 0 rgba(255,255,255,.14), inset 0 -2px 8px rgba(0,0,0,.55);
+  }
+  .krow { display:grid; grid-template-columns:repeat(6,1fr); gap:4px; }
+  .amp-row { display:flex; justify-content:center; margin-top:6px; }
+
+  /* cabinet */
+  .cab {
+    position:relative; height:60px; margin-top:-2px; border-radius:4px 4px 12px 12px;
+    background:linear-gradient(#181a1e,#0b0c0f); border:1px solid rgba(0,0,0,.7);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.06), inset 0 -3px 10px rgba(0,0,0,.6);
     overflow:hidden;
   }
-  .wrap { padding: 16px 18px 18px; }
-  header { display:flex; align-items:baseline; gap:.6rem; margin-bottom:.6rem; }
-  h1 { font-size:1.15rem; margin:0; letter-spacing:-.02em; color:#eef1f4; }
-  h1 .a { color:var(--accent); }
-  .sub { font-size:.62rem; color:#7f8a78; }
+  .cab::after { content:""; position:absolute; inset:6px; border-radius:3px;
+    background:
+      var(--grille, transparent),
+      repeating-linear-gradient(45deg, rgba(0,0,0,.22) 0 1px, transparent 1px 4px),
+      repeating-linear-gradient(-45deg, rgba(0,0,0,.22) 0 1px, transparent 1px 4px);
+    box-shadow:inset 0 0 0 2px rgba(0,0,0,.7); }
+  .cab-badge { position:absolute; z-index:1; bottom:8px; left:50%; transform:translateX(-50%);
+    font-size:.56rem; letter-spacing:.22em; text-transform:uppercase; color:rgba(255,255,255,.85);
+    text-shadow:0 1px 3px rgba(0,0,0,.9); }
 
-  /* the amp/pedal panel */
-  .panel {
-    border-radius:12px;
-    padding:16px 14px 14px;
-    background:linear-gradient(#1a1e23,#0f1216),
-      repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 1px, transparent 1px 3px);
-    border:1px solid rgba(0,0,0,.6);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 -3px 10px rgba(0,0,0,.5);
+  /* pedalboard */
+  .board {
+    display:flex; gap:0; overflow-x:auto; margin-top:12px; padding:14px 6px 8px;
+    border-radius:10px;
+    background:repeating-linear-gradient(180deg,#34383f 0 9px,#2a2d33 9px 12px,#23262b 12px 21px,#191b1f 21px 24px);
+    border:1px solid rgba(0,0,0,.7);
+    box-shadow:0 14px 26px -18px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.14);
+    scrollbar-width:thin;
   }
-  .knobs { display:grid; grid-template-columns:repeat(4,1fr); gap:12px 6px; }
-  .knob { display:flex; flex-direction:column; align-items:center; gap:5px; }
-  .dial {
-    width:56px; height:56px; border-radius:50%;
-    background: conic-gradient(from -135deg, var(--accent) 0deg, #23262b 0deg 270deg, transparent 270deg);
-    position:relative; cursor:grab; touch-action:none;
-    box-shadow: inset 0 0 0 5px #14171b, 0 3px 6px rgba(0,0,0,.5);
+  .stomp {
+    flex:1 1 0; min-width:82px; border-radius:10px; padding:8px 5px 6px; margin:0 3px;
+    display:flex; flex-direction:column; align-items:center; gap:5px; color:#14140f;
+    background:
+      radial-gradient(circle at 8px 8px,#17181c 0 1.4px,transparent 2px),
+      radial-gradient(circle at calc(100% - 8px) 8px,#17181c 0 1.4px,transparent 2px),
+      linear-gradient(180deg, color-mix(in oklab,var(--pc) 80%,white 20%), var(--pc) 40%, color-mix(in oklab,var(--pc) 72%,black 28%));
+    border:1px solid rgba(0,0,0,.55); box-shadow:0 7px 12px -5px rgba(0,0,0,.6), inset 0 1.5px 0 rgba(255,255,255,.4);
   }
+  .stomp .knobs { display:flex; justify-content:center; gap:4px; }
+  .sb-name { margin-top:auto; font-size:.56rem; font-weight:800; letter-spacing:.1em; color:#16160f; opacity:.85; }
+  .sb-led { width:8px; height:8px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#3a3a3a,#141414); }
+  .sb-led.on { background:radial-gradient(circle at 35% 30%,#ff8a7a,#e01f1f 70%); box-shadow:0 0 6px #ff3b3b,0 0 11px #ff2a2a; }
+
+  /* knob */
+  .knob { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .dial { width:44px; height:44px; border-radius:50%; position:relative; cursor:grab; touch-action:none;
+    background:conic-gradient(from -135deg, var(--kc,var(--accent)) 0deg, #23262b 0deg 270deg, transparent 270deg);
+    box-shadow:inset 0 0 0 4px #191b1f, 0 2px 5px rgba(0,0,0,.5); }
   .dial:active { cursor:grabbing; }
-  .dial::after {
-    content:""; position:absolute; inset:8px; border-radius:50%;
-    background: radial-gradient(circle at 36% 28%, #52555e, #191b1f 70%);
-    box-shadow: inset 0 1.5px 1px rgba(255,255,255,.22), inset 0 -3px 5px rgba(0,0,0,.55);
-  }
-  .ptr {
-    position:absolute; left:50%; top:9px; width:2px; height:16px; margin-left:-1px;
-    background:var(--accent); border-radius:2px; transform-origin:50% 19px; z-index:2;
-    box-shadow:0 0 4px var(--accent);
-  }
-  .k-label { font-size:.58rem; letter-spacing:.1em; opacity:.85; }
-  .k-val { font-size:.62rem; color:var(--accent); font-variant-numeric:tabular-nums; }
+  .dial::after { content:""; position:absolute; inset:6px; border-radius:50%;
+    background:radial-gradient(circle at 36% 28%,#52555e,#191b1f 70%);
+    box-shadow:inset 0 1.5px 1px rgba(255,255,255,.22), inset 0 -3px 5px rgba(0,0,0,.55); }
+  .ptr { position:absolute; left:50%; top:6px; width:2px; height:13px; margin-left:-1px; z-index:2;
+    background:var(--kc,var(--accent)); border-radius:2px; transform-origin:50% 16px; box-shadow:0 0 3px var(--kc,var(--accent)); }
+  .k-label { font-size:.5rem; letter-spacing:.08em; opacity:.85; }
+  .amp .k-label { color:#c6ccd4; }
+  .stomp .k-label { color:#16160f; }
+  .k-val { font-size:.55rem; color:var(--kc,var(--accent)); font-variant-numeric:tabular-nums; }
+  .stomp .k-val { color:#16160f; }
 
-  .row { display:flex; align-items:center; gap:14px; margin-top:12px; flex-wrap:wrap; }
-  .lbl { font-size:.62rem; letter-spacing:.14em; opacity:.7; }
-  .seg { display:inline-flex; border:1px solid rgba(255,255,255,.14); border-radius:8px; overflow:hidden; }
-  .seg button {
-    background:#14171a; color:var(--ink); border:none; padding:.4rem .7rem;
-    font-family:inherit; font-size:.68rem; cursor:pointer;
-  }
-  .seg button + button { border-left:1px solid rgba(255,255,255,.12); }
-  .seg button.on { background:var(--accent); color:#14171a; font-weight:700; }
-  .toggle {
-    padding:.4rem .9rem; border-radius:999px; border:1px solid rgba(255,255,255,.14);
-    background:rgba(0,0,0,.25); color:var(--ink); font-family:inherit; font-size:.66rem;
-    letter-spacing:.12em; cursor:pointer;
-  }
-  .toggle.on { color:var(--accent); border-color:var(--accent);
-    background:color-mix(in oklab, var(--accent) 16%, transparent); box-shadow:0 0 12px -3px var(--accent); }
+  /* segmented + toggle */
+  .seg { display:inline-flex; border:1px solid rgba(0,0,0,.4); border-radius:7px; overflow:hidden; }
+  .seg button { background:rgba(0,0,0,.18); color:#16160f; border:none; padding:2px 6px; font-family:inherit; font-size:.6rem; font-weight:700; cursor:pointer; }
+  .seg button + button { border-left:1px solid rgba(0,0,0,.35); }
+  .seg button.on { background:#16160f; color:var(--pc); }
+  .toggle { padding:4px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.14);
+    background:rgba(0,0,0,.28); color:#c6ccd4; font-family:inherit; font-size:.6rem; letter-spacing:.12em; cursor:pointer; }
+  .toggle.on { color:var(--accent); border-color:var(--accent); background:color-mix(in oklab,var(--accent) 16%,transparent); box-shadow:0 0 10px -3px var(--accent); }
 </style>
 </head>
 <body>
   <div class="wrap">
-    <header>
-      <h1>sound<span class="a">//</span>box</h1>
-      <span class="sub">guitar multi-fx · AU</span>
-    </header>
-    <div class="panel">
-      <div class="knobs" id="knobs"></div>
-      <div class="row">
-        <span class="lbl">DIST</span>
-        <div class="seg" id="dist"></div>
-        <button class="toggle" id="cab">CAB SIM</button>
+    <header><h1>sound<span class="a">//</span>box</h1><span class="sub">guitar multi-fx · plugin</span></header>
+
+    <div class="pickers">
+      <label class="pick"><span>ARTIST</span><select id="artist"></select></label>
+      <label class="pick" id="songWrap"><span>SONG</span><select id="song"></select></label>
+    </div>
+
+    <div class="amp" id="amp">
+      <div class="amp-top"><div class="logo">SOUND<span>//</span>BOX</div><span class="jewel"></span></div>
+      <div class="amp-panel">
+        <div class="krow" id="ampKnobs"></div>
+        <div class="amp-row"><button class="toggle" id="cab">CAB SIM</button></div>
       </div>
     </div>
+    <div class="cab" id="cabVisual"><span class="cab-badge" id="badge">CLEAN</span></div>
+
+    <div class="board" id="board"></div>
   </div>
 
 <script type="module">
   import * as Juce from "./js/juce.js";
 
-  const el = (t, c) => { const e = document.createElement(t); if (c) e.className = c; return e; };
+  const el = (t,c)=>{const e=document.createElement(t); if(c)e.className=c; return e;};
 
-  // format the scaled parameter value for the little readout
+  // parameter ranges (must match the C++ layout) — for preset normalisation
+  const RANGE = {
+    gate:[0,1], comp:[0,1], drive:[0,1], low:[-18,18], mid:[-18,18], high:[-18,18],
+    delayMix:[0,1], delayTime:[0.02,1], delayFb:[0,0.9], chorus:[0,1], reverb:[0,1], level:[0,1.5],
+  };
   const fmt = {
-    pct: v => Math.round(v * 100) + "%",
-    db:  v => (v > 0 ? "+" : "") + v.toFixed(0),
-    ms:  v => Math.round(v * 1000) + "ms",
+    pct:v=>Math.round(v*100)+"%", db:v=>(v>0?"+":"")+v.toFixed(0), ms:v=>Math.round(v*1000)+"ms",
   };
 
-  function makeKnob(parent, id, label, kind) {
-    const state = Juce.getSliderState(id);
-    const wrap = el("div", "knob");
-    const dial = el("div", "dial");
-    const ptr = el("div", "ptr");
+  const states = {};       // id -> slider state
+  function makeKnob(parent, id, label, kind, kc) {
+    const state = Juce.getSliderState(id); states[id] = state;
+    const wrap=el("div","knob"), dial=el("div","dial"), ptr=el("div","ptr");
+    if (kc) { dial.style.setProperty("--kc", kc); }
     dial.appendChild(ptr);
-    const lab = el("div", "k-label"); lab.textContent = label;
-    const val = el("div", "k-val");
-    wrap.append(dial, lab, val);
-    parent.appendChild(wrap);
-
-    const render = () => {
-      const n = state.getNormalisedValue();
-      ptr.style.transform = `rotate(${-135 + n * 270}deg)`;
-      dial.style.background =
-        `conic-gradient(from -135deg, var(--accent) ${n * 270}deg, #23262b ${n * 270}deg 270deg, transparent 270deg)`;
-      val.textContent = fmt[kind](state.getScaledValue());
-    };
-
-    let dragging = false, startY = 0, startN = 0;
-    dial.addEventListener("pointerdown", e => {
-      dragging = true; startY = e.clientY; startN = state.getNormalisedValue();
-      dial.setPointerCapture(e.pointerId); state.sliderDragStarted();
-    });
-    dial.addEventListener("pointermove", e => {
-      if (!dragging) return;
-      let v = startN + (startY - e.clientY) / 150;
-      v = Math.max(0, Math.min(1, v));
-      state.setNormalisedValue(v); render();
-    });
-    const end = e => { if (!dragging) return; dragging = false; state.sliderDragEnded();
-      dial.releasePointerCapture?.(e.pointerId); };
-    dial.addEventListener("pointerup", end);
-    dial.addEventListener("pointercancel", end);
-    dial.addEventListener("dblclick", () => { state.setNormalisedValue(0.5); render(); });
-
-    state.valueChangedEvent.addListener(render);
-    render();
+    const lab=el("div","k-label"); lab.textContent=label;
+    const val=el("div","k-val");
+    wrap.append(dial,lab,val); parent.appendChild(wrap);
+    const render=()=>{ const n=state.getNormalisedValue();
+      ptr.style.transform=`rotate(${-135+n*270}deg)`;
+      dial.style.background=`conic-gradient(from -135deg, ${kc||"var(--accent)"} ${n*270}deg, #23262b ${n*270}deg 270deg, transparent 270deg)`;
+      val.textContent=fmt[kind](state.getScaledValue()); };
+    let dg=false,sy=0,sn=0;
+    dial.addEventListener("pointerdown",e=>{dg=true;sy=e.clientY;sn=state.getNormalisedValue();dial.setPointerCapture(e.pointerId);state.sliderDragStarted();});
+    dial.addEventListener("pointermove",e=>{if(!dg)return;let v=sn+(sy-e.clientY)/150;v=Math.max(0,Math.min(1,v));state.setNormalisedValue(v);render();});
+    const end=e=>{if(!dg)return;dg=false;state.sliderDragEnded();dial.releasePointerCapture?.(e.pointerId);};
+    dial.addEventListener("pointerup",end); dial.addEventListener("pointercancel",end);
+    state.valueChangedEvent.addListener(render); render();
   }
 
-  const knobs = document.getElementById("knobs");
-  const K = [
-    ["gate","GATE","pct"], ["comp","COMP","pct"], ["drive","DRIVE","pct"], ["low","LOW","db"],
-    ["mid","MID","db"], ["high","HIGH","db"], ["delayMix","DELAY","pct"], ["delayTime","TIME","ms"],
-    ["delayFb","F.BACK","pct"], ["chorus","CHORUS","pct"], ["reverb","REVERB","pct"], ["level","LEVEL","pct"],
-  ];
-  K.forEach(([id, label, kind]) => makeKnob(knobs, id, label, kind));
+  // amp knobs
+  makeKnob(document.getElementById("ampKnobs"),"gate","GATE","pct");
+  makeKnob(document.getElementById("ampKnobs"),"low","LOW","db");
+  makeKnob(document.getElementById("ampKnobs"),"mid","MID","db");
+  makeKnob(document.getElementById("ampKnobs"),"high","HIGH","db");
+  makeKnob(document.getElementById("ampKnobs"),"reverb","REVERB","pct");
+  makeKnob(document.getElementById("ampKnobs"),"level","LEVEL","pct");
 
-  // distortion type — segmented control bound to the combo box parameter
-  const dist = Juce.getComboBoxState("distType");
-  const distEl = document.getElementById("dist");
-  const choices = dist.properties.choices;
-  const distBtns = choices.map((name, i) => {
-    const b = el("button"); b.textContent = name;
-    b.onclick = () => dist.setChoiceIndex(i);
-    distEl.appendChild(b); return b;
+  // cab toggle
+  const cab=Juce.getToggleState("cab");
+  const cabEl=document.getElementById("cab");
+  cabEl.onclick=()=>cab.setValue(!cab.getValue());
+  const paintCab=()=>cabEl.classList.toggle("on",cab.getValue());
+  cab.valueChangedEvent.addListener(paintCab); paintCab();
+
+  // pedalboard — 4 stompboxes
+  const board=document.getElementById("board");
+  const dist=Juce.getComboBoxState("distType");
+  function stompbox(name, pc, build) {
+    const box=el("div","stomp"); box.style.setProperty("--pc",pc);
+    const knobs=el("div","knobs"); box.appendChild(knobs);
+    build(knobs, box);
+    const nm=el("div","sb-name"); nm.textContent=name; box.appendChild(nm);
+    const led=el("span","sb-led on"); box.appendChild(led);
+    board.appendChild(box);
+  }
+  stompbox("SQUISH","#4a86b0",(k)=>makeKnob(k,"comp","COMP","pct","#4a86b0"));
+  stompbox("OVERDRIVE","#d98a3d",(k,box)=>{
+    makeKnob(k,"drive","DRIVE","pct","#d98a3d");
+    const seg=el("div","seg");
+    const btns=dist.properties.choices.map((c,i)=>{ const b=el("button"); b.textContent=c[0]; b.onclick=()=>dist.setChoiceIndex(i); seg.appendChild(b); return b; });
+    box.insertBefore(seg, box.querySelector(".sb-name"));
+    const paint=()=>btns.forEach((b,i)=>b.classList.toggle("on",i===dist.getChoiceIndex()));
+    dist.valueChangedEvent.addListener(paint); paint();
   });
-  const paintDist = () => distBtns.forEach((b, i) => b.classList.toggle("on", i === dist.getChoiceIndex()));
-  dist.valueChangedEvent.addListener(paintDist);
-  paintDist();
+  stompbox("SHIMMER","#3aa6a0",(k)=>makeKnob(k,"chorus","DEPTH","pct","#3aa6a0"));
+  stompbox("ECHO","#6a8f4f",(k)=>{
+    makeKnob(k,"delayMix","MIX","pct","#6a8f4f");
+    makeKnob(k,"delayTime","TIME","ms","#6a8f4f");
+    makeKnob(k,"delayFb","RPTS","pct","#6a8f4f");
+  });
 
-  // cab sim — toggle button bound to the bool parameter
-  const cab = Juce.getToggleState("cab");
-  const cabEl = document.getElementById("cab");
-  cabEl.onclick = () => cab.setValue(!cab.getValue());
-  const paintCab = () => cabEl.classList.toggle("on", cab.getValue());
-  cab.valueChangedEvent.addListener(paintCab);
-  paintCab();
+  // ---- presets (artist → song → tone) ----
+  const D=(o)=>Object.assign({drive:0,low:0,mid:0,high:0,delayMix:0,delayTime:0.3,delayFb:0.35,reverb:0,gate:0,cab:false,chorus:0,comp:0,dist:0},o);
+  const ARTISTS=[
+    {id:"clean",name:"Clean",accent:"#7fe08a",chassis:"linear-gradient(#20272a,#12181a)",songs:[
+      {name:"Clean",t:D({delayFb:0.35})}]},
+    {id:"top",name:"Twenty One Pilots",accent:"#e5443c",chassis:"linear-gradient(#2a1210,#150706)",songs:[
+      {name:"Shy Away",t:D({drive:.45,mid:2,high:4,delayMix:.16,delayTime:.3,delayFb:.3,reverb:.18})},
+      {name:"Saturday",t:D({drive:.28,low:-2,mid:3,high:3,delayMix:.1,delayTime:.25,delayFb:.2})},
+      {name:"The Outside",t:D({drive:.55,low:2,mid:1,high:1,delayMix:.1,delayTime:.28,delayFb:.25})},
+      {name:"Heathens",t:D({drive:.34,low:4,mid:-2,high:-2,delayMix:.3,delayTime:.4,delayFb:.4,reverb:.4})}]},
+    {id:"strokes",name:"The Strokes",accent:"#e8b64c",chassis:"linear-gradient(#33281c,#1c150d)",songs:[
+      {name:"Reptilia",t:D({drive:.5,low:-5,mid:2,high:6,delayMix:.05,delayTime:.22,delayFb:.15})},
+      {name:"Last Nite",t:D({drive:.4,low:-4,mid:3,high:5,delayMix:.05,delayTime:.2,delayFb:.12})},
+      {name:"Juicebox",t:D({drive:.66,low:2,mid:2,high:3,delayMix:.04,delayTime:.2,delayFb:.1,dist:1})},
+      {name:"You Only Live Once",t:D({drive:.5,low:-2,mid:3,high:4,delayMix:.06,delayTime:.24,delayFb:.15})}]},
+    {id:"am",name:"Arctic Monkeys",accent:"#c65b7e",chassis:"linear-gradient(#20182a,#100a16)",songs:[
+      {name:"Do I Wanna Know?",t:D({drive:.6,low:4,mid:1,delayMix:.1,delayTime:.3,delayFb:.25,dist:2})},
+      {name:"R U Mine?",t:D({drive:.75,low:3,mid:2,delayMix:.08,delayTime:.25,delayFb:.2,dist:2})},
+      {name:"Brianstorm",t:D({drive:.62,mid:3,high:4,delayMix:.06,delayTime:.2,delayFb:.15})},
+      {name:"505",t:D({drive:.35,low:1,mid:1,high:1,delayMix:.16,delayTime:.35,delayFb:.35,reverb:.28})}]},
+    {id:"catfish",name:"Catfish & the Bottlemen",accent:"#5fb0c9",chassis:"linear-gradient(#14202a,#0a1016)",songs:[
+      {name:"Kathleen",t:D({drive:.55,low:-1,mid:3,high:4,delayMix:.08,delayTime:.24,delayFb:.18})},
+      {name:"Cocoon",t:D({drive:.4,mid:2,high:4,delayMix:.12,delayTime:.3,delayFb:.25,reverb:.2})},
+      {name:"Soundcheck",t:D({drive:.6,low:2,mid:2,high:2,delayMix:.08,delayTime:.24,delayFb:.2})},
+      {name:"7",t:D({drive:.5,low:1,mid:3,high:3,delayMix:.1,delayTime:.28,delayFb:.22})}]},
+    {id:"fike",name:"Dominic Fike",accent:"#e69a3c",chassis:"linear-gradient(#2a1c12,#150c07)",songs:[
+      {name:"3 Nights",t:D({drive:.18,low:-1,mid:1,high:4,delayMix:.12,delayTime:.28,delayFb:.25,reverb:.22,chorus:.3,comp:.25})},
+      {name:"Chicken Tenders",t:D({drive:.15,low:-2,mid:2,high:5,delayMix:.08,delayTime:.22,delayFb:.15,reverb:.14,chorus:.18,comp:.4})},
+      {name:"Babydoll",t:D({drive:.34,low:2,mid:2,high:1,delayMix:.1,delayTime:.3,delayFb:.25,reverb:.3,chorus:.2,comp:.2})},
+      {name:"Phone Numbers",t:D({drive:.2,mid:1,high:3,delayMix:.16,delayTime:.34,delayFb:.3,reverb:.28,chorus:.35,comp:.2})},
+      {name:"Westcoast Collective",t:D({drive:.22,low:1,mid:1,high:3,delayMix:.12,delayTime:.3,delayFb:.28,reverb:.26,chorus:.3,comp:.22})},
+      {name:"King of Everything",t:D({drive:.4,low:1,mid:3,high:2,delayMix:.1,delayTime:.28,delayFb:.25,reverb:.2,chorus:.18,comp:.2})},
+      {name:"Misses",t:D({drive:.2,low:2,mid:1,high:1,delayMix:.14,delayTime:.34,delayFb:.3,reverb:.34,chorus:.28,comp:.2})},
+      {name:"4x4",t:D({drive:.16,low:-1,mid:2,high:5,delayMix:.08,delayTime:.24,delayFb:.18,reverb:.16,chorus:.22,comp:.35})}]},
+    {id:"fender",name:"Sam Fender",accent:"#d94a3f",chassis:"linear-gradient(#2a1414,#150807)",songs:[
+      {name:"Seventeen Going Under",t:D({drive:.42,mid:2,high:4,delayMix:.1,delayTime:.28,delayFb:.28,reverb:.22})},
+      {name:"Hypersonic Missiles",t:D({drive:.5,low:1,mid:2,high:3,delayMix:.08,delayTime:.25,delayFb:.22,reverb:.18})},
+      {name:"Will We Talk?",t:D({drive:.4,low:-1,mid:2,high:5,delayMix:.06,delayTime:.22,delayFb:.2,reverb:.16})},
+      {name:"Getting Started",t:D({drive:.48,low:1,mid:3,high:2,delayMix:.08,delayTime:.26,delayFb:.24,reverb:.18})},
+      {name:"The Borders",t:D({drive:.38,low:1,mid:1,high:3,delayMix:.16,delayTime:.36,delayFb:.34,reverb:.28})}]},
+    {id:"5sos",name:"5 Seconds of Summer",accent:"#4fb0a0",chassis:"linear-gradient(#141a1a,#080b0b)",songs:[
+      {name:"She Looks So Perfect",t:D({drive:.6,low:2,mid:1,high:3,delayMix:.05,delayTime:.2,delayFb:.15,reverb:.12,cab:true})},
+      {name:"Youngblood",t:D({drive:.5,low:3,mid:2,high:1,delayMix:.06,delayTime:.22,delayFb:.18,reverb:.1,cab:true})},
+      {name:"She's Kinda Hot",t:D({drive:.68,low:2,mid:2,high:3,delayMix:.04,delayTime:.2,delayFb:.12,reverb:.1,cab:true,dist:1})},
+      {name:"Jet Black Heart",t:D({drive:.55,low:2,mid:1,high:2,delayMix:.1,delayTime:.28,delayFb:.25,reverb:.24,cab:true})},
+      {name:"Don't Stop",t:D({drive:.58,low:1,mid:2,high:3,delayMix:.05,delayTime:.2,delayFb:.15,reverb:.12,cab:true})}]},
+  ];
+
+  const norm=(id,v)=>{ const [lo,hi]=RANGE[id]; return Math.max(0,Math.min(1,(v-lo)/(hi-lo))); };
+  function applyTone(t) {
+    ["gate","drive","low","mid","high","delayMix","delayTime","delayFb","reverb","chorus","comp"]
+      .forEach(id=>{ if(states[id]) states[id].setNormalisedValue(norm(id, t[id])); });
+    dist.setChoiceIndex(t.dist|0);
+    cab.setValue(!!t.cab);
+  }
+  function skin(a) {
+    document.documentElement.style.setProperty("--accent", a.accent);
+    document.getElementById("amp").style.setProperty("--chassis", a.chassis);
+    document.getElementById("badge").textContent = a.name;
+  }
+
+  const artistSel=document.getElementById("artist");
+  const songSel=document.getElementById("song");
+  ARTISTS.forEach((a,i)=>{ const o=el("option"); o.value=i; o.textContent=a.name; artistSel.appendChild(o); });
+
+  function loadArtist(i, applyFirst=true) {
+    const a=ARTISTS[i]; skin(a);
+    songSel.innerHTML="";
+    a.songs.forEach((s,j)=>{ const o=el("option"); o.value=j; o.textContent=s.name; songSel.appendChild(o); });
+    document.getElementById("songWrap").style.display = a.songs.length>1 ? "" : "none";
+    if (applyFirst) applyTone(a.songs[0].t);
+  }
+  artistSel.onchange=()=>loadArtist(+artistSel.value);
+  songSel.onchange=()=>applyTone(ARTISTS[+artistSel.value].songs[+songSel.value].t);
+
+  loadArtist(0, false); // set skin without stomping the host's saved state on open
 </script>
 </body>
 </html>
