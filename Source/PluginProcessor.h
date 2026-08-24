@@ -41,5 +41,11 @@ public:
 private:
     std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
 
+    // 3-band EQ (stereo) — low shelf, mid peak, high shelf
+    using Filter = juce::dsp::ProcessorDuplicator<
+        juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>>;
+    Filter lowShelf, midPeak, highShelf;
+    double fs = 44100.0;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SoundBoxProcessor)
 };

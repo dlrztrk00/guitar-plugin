@@ -3,8 +3,8 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "PluginProcessor.h"
 
-// Step 2: native JUCE knobs bound to the parameters. The HTML/CSS pedal UI
-// (WebView) comes in a later step.
+// Step 3: native JUCE knobs (drive, EQ, level) bound to the parameters.
+// The HTML/CSS pedal UI (WebView) comes in a later step.
 class SoundBoxEditor : public juce::AudioProcessorEditor
 {
 public:
@@ -18,16 +18,22 @@ private:
     using SliderAttachment   = juce::AudioProcessorValueTreeState::SliderAttachment;
     using ComboBoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
 
+    struct KnobUI
+    {
+        juce::Slider slider;
+        juce::Label  label;
+        std::unique_ptr<SliderAttachment> attach;
+    };
+
+    void addKnob (KnobUI&, const juce::String& paramId, const juce::String& text);
+
     SoundBoxProcessor& proc;
 
-    juce::Slider driveKnob, levelKnob;
-    juce::Label  driveLabel, levelLabel, distLabel;
+    KnobUI drive, low, mid, high, level;
+
+    juce::Label    distLabel;
     juce::ComboBox distBox;
-
-    std::unique_ptr<SliderAttachment>   driveAtt, levelAtt;
     std::unique_ptr<ComboBoxAttachment> distAtt;
-
-    void styleKnob (juce::Slider&, juce::Label&, const juce::String& text);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SoundBoxEditor)
 };

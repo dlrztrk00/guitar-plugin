@@ -3,8 +3,11 @@
 SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
     : AudioProcessorEditor (&p), proc (p)
 {
-    styleKnob (driveKnob, driveLabel, "DRIVE");
-    styleKnob (levelKnob, levelLabel, "LEVEL");
+    addKnob (drive, "drive", "DRIVE");
+    addKnob (low,   "low",   "LOW");
+    addKnob (mid,   "mid",   "MID");
+    addKnob (high,  "high",  "HIGH");
+    addKnob (level, "level", "LEVEL");
 
     distLabel.setText ("DIST", juce::dontSendNotification);
     distLabel.setJustificationType (juce::Justification::centred);
@@ -16,29 +19,28 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
     distBox.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff14171a));
     distBox.setColour (juce::ComboBox::textColourId, juce::Colour (0xffe6ede2));
     addAndMakeVisible (distBox);
+    distAtt = std::make_unique<ComboBoxAttachment> (proc.apvts, "distType", distBox);
 
-    driveAtt = std::make_unique<SliderAttachment>   (proc.apvts, "drive",    driveKnob);
-    levelAtt = std::make_unique<SliderAttachment>   (proc.apvts, "level",    levelKnob);
-    distAtt  = std::make_unique<ComboBoxAttachment> (proc.apvts, "distType", distBox);
-
-    setSize (460, 300);
+    setSize (620, 300);
 }
 
-void SoundBoxEditor::styleKnob (juce::Slider& s, juce::Label& l, const juce::String& text)
+void SoundBoxEditor::addKnob (KnobUI& k, const juce::String& paramId, const juce::String& text)
 {
-    s.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-    s.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 64, 18);
-    s.setColour (juce::Slider::rotarySliderFillColourId, juce::Colour (0xffe8b64c));
-    s.setColour (juce::Slider::thumbColourId, juce::Colour (0xfff1e6cf));
-    s.setColour (juce::Slider::textBoxTextColourId, juce::Colour (0xffe8b64c));
-    s.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    addAndMakeVisible (s);
+    k.slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+    k.slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 60, 18);
+    k.slider.setColour (juce::Slider::rotarySliderFillColourId, juce::Colour (0xffe8b64c));
+    k.slider.setColour (juce::Slider::thumbColourId, juce::Colour (0xfff1e6cf));
+    k.slider.setColour (juce::Slider::textBoxTextColourId, juce::Colour (0xffe8b64c));
+    k.slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    addAndMakeVisible (k.slider);
 
-    l.setText (text, juce::dontSendNotification);
-    l.setJustificationType (juce::Justification::centred);
-    l.setColour (juce::Label::textColourId, juce::Colour (0xffc6ccd4));
-    l.setFont (juce::FontOptions (12.0f));
-    addAndMakeVisible (l);
+    k.label.setText (text, juce::dontSendNotification);
+    k.label.setJustificationType (juce::Justification::centred);
+    k.label.setColour (juce::Label::textColourId, juce::Colour (0xffc6ccd4));
+    k.label.setFont (juce::FontOptions (12.0f));
+    addAndMakeVisible (k.label);
+
+    k.attach = std::make_unique<SliderAttachment> (proc.apvts, paramId, k.slider);
 }
 
 void SoundBoxEditor::paint (juce::Graphics& g)
@@ -52,7 +54,7 @@ void SoundBoxEditor::paint (juce::Graphics& g)
 
     g.setColour (juce::Colour (0xff7f8a78));
     g.setFont (juce::FontOptions (12.0f));
-    g.drawText ("distortion — AU plugin",
+    g.drawText ("distortion + 3-band EQ — AU plugin",
                 getLocalBounds().reduced (24).removeFromTop (66).removeFromBottom (20),
                 juce::Justification::centredLeft);
 }
@@ -60,20 +62,25 @@ void SoundBoxEditor::paint (juce::Graphics& g)
 void SoundBoxEditor::resized()
 {
     auto area = getLocalBounds().reduced (24);
-    area.removeFromTop (72); // header
+    area.removeFromTop (60); // header
 
     auto row = area.removeFromTop (150);
-    const int knobW = 120;
+    const int knobW = row.getWidth() / 5;
 
-    auto driveArea = row.removeFromLeft (knobW);
-    driveLabel.setBounds (driveArea.removeFromTop (18));
-    driveKnob.setBounds (driveArea);
+    auto place = [&] (KnobUI& k)
+    {
+        auto col = row.removeFromLeft (knobW);
+        k.label.setBounds (col.removeFromTop (18));
+        k.slider.setBounds (col);
+    };
+    place (drive);
+    place (low);
+    place (mid);
+    place (high);
+    place (level);
 
-    auto levelArea = row.removeFromLeft (knobW);
-    levelLabel.setBounds (levelArea.removeFromTop (18));
-    levelKnob.setBounds (levelArea);
-
-    auto distArea = row.removeFromLeft (knobW + 20);
-    distLabel.setBounds (distArea.removeFromTop (18));
-    distBox.setBounds (distArea.removeFromTop (30).reduced (4, 0));
+    // DIST selector below the drive knob
+    auto bottom = area.removeFromTop (34);
+    distLabel.setBounds (bottom.removeFromLeft (44));
+    distBox.setBounds (bottom.removeFromLeft (140));
 }

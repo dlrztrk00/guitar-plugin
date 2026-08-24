@@ -37,6 +37,16 @@ SoundBoxProcessor::createParameterLayout()
         StringArray { "Soft", "Hard", "Fuzz" }, 0));
 
     layout.add (std::make_unique<AudioParameterFloat> (
+        ParameterID { "low", 1 }, "Low",
+        NormalisableRange<float> (-18.0f, 18.0f, 0.1f), 0.0f));
+    layout.add (std::make_unique<AudioParameterFloat> (
+        ParameterID { "mid", 1 }, "Mid",
+        NormalisableRange<float> (-18.0f, 18.0f, 0.1f), 0.0f));
+    layout.add (std::make_unique<AudioParameterFloat> (
+        ParameterID { "high", 1 }, "High",
+        NormalisableRange<float> (-18.0f, 18.0f, 0.1f), 0.0f));
+
+    layout.add (std::make_unique<AudioParameterFloat> (
         ParameterID { "level", 1 }, "Level",
         NormalisableRange<float> (0.0f, 1.5f, 0.001f), 1.0f));
 
@@ -53,15 +63,21 @@ SoundBoxProcessor::SoundBoxProcessor()
 
 void SoundBoxProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    juce::ignoreUnused (sampleRate);
-
+    fs = sampleRate;
     const auto channels = (size_t) juce::jmax (1, getTotalNumInputChannels());
+
     // 4x oversampling (factor 2 = 2^2) — tames the harsh aliasing distortion makes
     oversampler = std::make_unique<juce::dsp::Oversampling<float>> (
         channels, 2,
         juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR);
     oversampler->initProcessing ((size_t) samplesPerBlock);
     setLatencySamples ((int) oversampler->getLatencyInSamples());
+
+    juce::dsp::ProcessSpec spec { sampleRate, (juce::uint32) samplesPerBlock,
+                                  (juce::uint32) channels };
+    lowShelf.prepare (spec);
+    midPeak.prepare (spec);
+    highShelf.prepare (spec);
 }
 
 bool SoundBoxProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -102,6 +118,23 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
         oversampler->processSamplesDown (block);
     }
+
+    // 3-band EQ (post-distortion, at base rate) — matches the web signal order
+    const float lowDb  = apvts.getRawParameterValue ("low")->load();
+    const float midDb  = apvts.getRawParameterValue ("mid")->load();
+    const float highDb = apvts.getRawParameterValue ("high")->load();
+
+    *lowShelf.state  = *juce::dsp::IIR::Coefficients<float>::makeLowShelf (
+        fs, 200.0f, 0.707f, juce::Decibels::decibelsToGain (lowDb));
+    *midPeak.state   = *juce::dsp::IIR::Coefficients<float>::makePeakFilter (
+        fs, 1000.0f, 1.0f, juce::Decibels::decibelsToGain (midDb));
+    *highShelf.state = *juce::dsp::IIR::Coefficients<float>::makeHighShelf (
+        fs, 3500.0f, 0.707f, juce::Decibels::decibelsToGain (highDb));
+
+    juce::dsp::ProcessContextReplacing<float> ctx (block);
+    lowShelf.process (ctx);
+    midPeak.process (ctx);
+    highShelf.process (ctx);
 
     buffer.applyGain (level);
 }
