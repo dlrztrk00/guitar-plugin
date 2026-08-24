@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SoundBox</title>
+<style>
+  :root { --accent:#e8b64c; --ink:#c6ccd4; --panel:#14171b; --bg:#0b0d10; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; }
+  body {
+    background:
+      radial-gradient(700px 380px at 50% -10%, rgba(255,226,170,.06), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    user-select:none; -webkit-user-select:none;
+    overflow:hidden;
+  }
+  .wrap { padding: 16px 18px 18px; }
+  header { display:flex; align-items:baseline; gap:.6rem; margin-bottom:.6rem; }
+  h1 { font-size:1.15rem; margin:0; letter-spacing:-.02em; color:#eef1f4; }
+  h1 .a { color:var(--accent); }
+  .sub { font-size:.62rem; color:#7f8a78; }
+
+  /* the amp/pedal panel */
+  .panel {
+    border-radius:12px;
+    padding:16px 14px 14px;
+    background:linear-gradient(#1a1e23,#0f1216),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 1px, transparent 1px 3px);
+    border:1px solid rgba(0,0,0,.6);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 -3px 10px rgba(0,0,0,.5);
+  }
+  .knobs { display:grid; grid-template-columns:repeat(4,1fr); gap:12px 6px; }
+  .knob { display:flex; flex-direction:column; align-items:center; gap:5px; }
+  .dial {
+    width:56px; height:56px; border-radius:50%;
+    background: conic-gradient(from -135deg, var(--accent) 0deg, #23262b 0deg 270deg, transparent 270deg);
+    position:relative; cursor:grab; touch-action:none;
+    box-shadow: inset 0 0 0 5px #14171b, 0 3px 6px rgba(0,0,0,.5);
+  }
+  .dial:active { cursor:grabbing; }
+  .dial::after {
+    content:""; position:absolute; inset:8px; border-radius:50%;
+    background: radial-gradient(circle at 36% 28%, #52555e, #191b1f 70%);
+    box-shadow: inset 0 1.5px 1px rgba(255,255,255,.22), inset 0 -3px 5px rgba(0,0,0,.55);
+  }
+  .ptr {
+    position:absolute; left:50%; top:9px; width:2px; height:16px; margin-left:-1px;
+    background:var(--accent); border-radius:2px; transform-origin:50% 19px; z-index:2;
+    box-shadow:0 0 4px var(--accent);
+  }
+  .k-label { font-size:.58rem; letter-spacing:.1em; opacity:.85; }
+  .k-val { font-size:.62rem; color:var(--accent); font-variant-numeric:tabular-nums; }
+
+  .row { display:flex; align-items:center; gap:14px; margin-top:12px; flex-wrap:wrap; }
+  .lbl { font-size:.62rem; letter-spacing:.14em; opacity:.7; }
+  .seg { display:inline-flex; border:1px solid rgba(255,255,255,.14); border-radius:8px; overflow:hidden; }
+  .seg button {
+    background:#14171a; color:var(--ink); border:none; padding:.4rem .7rem;
+    font-family:inherit; font-size:.68rem; cursor:pointer;
+  }
+  .seg button + button { border-left:1px solid rgba(255,255,255,.12); }
+  .seg button.on { background:var(--accent); color:#14171a; font-weight:700; }
+  .toggle {
+    padding:.4rem .9rem; border-radius:999px; border:1px solid rgba(255,255,255,.14);
+    background:rgba(0,0,0,.25); color:var(--ink); font-family:inherit; font-size:.66rem;
+    letter-spacing:.12em; cursor:pointer;
+  }
+  .toggle.on { color:var(--accent); border-color:var(--accent);
+    background:color-mix(in oklab, var(--accent) 16%, transparent); box-shadow:0 0 12px -3px var(--accent); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>sound<span class="a">//</span>box</h1>
+      <span class="sub">guitar multi-fx · AU</span>
+    </header>
+    <div class="panel">
+      <div class="knobs" id="knobs"></div>
+      <div class="row">
+        <span class="lbl">DIST</span>
+        <div class="seg" id="dist"></div>
+        <button class="toggle" id="cab">CAB SIM</button>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+  import * as Juce from "./js/juce.js";
+
+  const el = (t, c) => { const e = document.createElement(t); if (c) e.className = c; return e; };
+
+  // format the scaled parameter value for the little readout
+  const fmt = {
+    pct: v => Math.round(v * 100) + "%",
+    db:  v => (v > 0 ? "+" : "") + v.toFixed(0),
+    ms:  v => Math.round(v * 1000) + "ms",
+  };
+
+  function makeKnob(parent, id, label, kind) {
+    const state = Juce.getSliderState(id);
+    const wrap = el("div", "knob");
+    const dial = el("div", "dial");
+    const ptr = el("div", "ptr");
+    dial.appendChild(ptr);
+    const lab = el("div", "k-label"); lab.textContent = label;
+    const val = el("div", "k-val");
+    wrap.append(dial, lab, val);
+    parent.appendChild(wrap);
+
+    const render = () => {
+      const n = state.getNormalisedValue();
+      ptr.style.transform = `rotate(${-135 + n * 270}deg)`;
+      dial.style.background =
+        `conic-gradient(from -135deg, var(--accent) ${n * 270}deg, #23262b ${n * 270}deg 270deg, transparent 270deg)`;
+      val.textContent = fmt[kind](state.getScaledValue());
+    };
+
+    let dragging = false, startY = 0, startN = 0;
+    dial.addEventListener("pointerdown", e => {
+      dragging = true; startY = e.clientY; startN = state.getNormalisedValue();
+      dial.setPointerCapture(e.pointerId); state.sliderDragStarted();
+    });
+    dial.addEventListener("pointermove", e => {
+      if (!dragging) return;
+      let v = startN + (startY - e.clientY) / 150;
+      v = Math.max(0, Math.min(1, v));
+      state.setNormalisedValue(v); render();
+    });
+    const end = e => { if (!dragging) return; dragging = false; state.sliderDragEnded();
+      dial.releasePointerCapture?.(e.pointerId); };
+    dial.addEventListener("pointerup", end);
+    dial.addEventListener("pointercancel", end);
+    dial.addEventListener("dblclick", () => { state.setNormalisedValue(0.5); render(); });
+
+    state.valueChangedEvent.addListener(render);
+    render();
+  }
+
+  const knobs = document.getElementById("knobs");
+  const K = [
+    ["gate","GATE","pct"], ["comp","COMP","pct"], ["drive","DRIVE","pct"], ["low","LOW","db"],
+    ["mid","MID","db"], ["high","HIGH","db"], ["delayMix","DELAY","pct"], ["delayTime","TIME","ms"],
+    ["delayFb","F.BACK","pct"], ["chorus","CHORUS","pct"], ["reverb","REVERB","pct"], ["level","LEVEL","pct"],
+  ];
+  K.forEach(([id, label, kind]) => makeKnob(knobs, id, label, kind));
+
+  // distortion type — segmented control bound to the combo box parameter
+  const dist = Juce.getComboBoxState("distType");
+  const distEl = document.getElementById("dist");
+  const choices = dist.properties.choices;
+  const distBtns = choices.map((name, i) => {
+    const b = el("button"); b.textContent = name;
+    b.onclick = () => dist.setChoiceIndex(i);
+    distEl.appendChild(b); return b;
+  });
+  const paintDist = () => distBtns.forEach((b, i) => b.classList.toggle("on", i === dist.getChoiceIndex()));
+  dist.valueChangedEvent.addListener(paintDist);
+  paintDist();
+
+  // cab sim — toggle button bound to the bool parameter
+  const cab = Juce.getToggleState("cab");
+  const cabEl = document.getElementById("cab");
+  cabEl.onclick = () => cab.setValue(!cab.getValue());
+  const paintCab = () => cabEl.classList.toggle("on", cab.getValue());
+  cab.valueChangedEvent.addListener(paintCab);
+  paintCab();
+</script>
+</body>
+</html>

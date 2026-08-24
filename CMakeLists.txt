@@ -35,16 +35,26 @@ target_sources(SoundBox PRIVATE
   Source/PluginEditor.cpp
 )
 
+# embed the web UI (pedal HTML/CSS/JS + JUCE's JS bridge) into the binary
+juce_add_binary_data(SoundBoxData
+  SOURCES
+    WebUI/index.html
+    WebUI/js/juce.js
+    WebUI/js/check_native_interop.js
+)
+
 target_compile_definitions(SoundBox PUBLIC
-  JUCE_WEB_BROWSER=0
+  JUCE_WEB_BROWSER=1
   JUCE_USE_CURL=0
   JUCE_VST3_CAN_REPLACE_VST2=0
 )
 
 target_link_libraries(SoundBox
   PRIVATE
+    SoundBoxData
     juce::juce_audio_utils
     juce::juce_dsp
+    juce::juce_gui_extra
   PUBLIC
     juce::juce_recommended_config_flags
     juce::juce_recommended_warning_flags

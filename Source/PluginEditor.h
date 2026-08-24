@@ -1,10 +1,11 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_gui_extra/juce_gui_extra.h>
 #include "PluginProcessor.h"
 
-// Full native control panel: 12 knobs + distortion selector + cab toggle.
-// (The HTML/CSS pedal UI via WebView is a later step.)
+// The pedal UI, rendered from embedded HTML/CSS/JS in a WebView, with each
+// control two-way bound to a plugin parameter via JUCE's WebView relays.
 class SoundBoxEditor : public juce::AudioProcessorEditor
 {
 public:
@@ -15,30 +16,23 @@ public:
     void resized() override;
 
 private:
-    using SliderAttachment   = juce::AudioProcessorValueTreeState::SliderAttachment;
-    using ComboBoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
-    using ButtonAttachment   = juce::AudioProcessorValueTreeState::ButtonAttachment;
-
-    struct KnobUI
-    {
-        juce::Slider slider;
-        juce::Label  label;
-        std::unique_ptr<SliderAttachment> attach;
-    };
-
-    void addKnob (KnobUI&, const juce::String& paramId, const juce::String& text);
+    std::optional<juce::WebBrowserComponent::Resource> getResource (const juce::String& url);
 
     SoundBoxProcessor& proc;
 
-    KnobUI gate, comp, drive, low, mid, high,
-           delayMix, delayTime, delayFb, chorus, reverb, level;
+    // one relay per parameter (constructed before the WebView below)
+    juce::WebSliderRelay gateRelay { "gate" }, compRelay { "comp" }, driveRelay { "drive" },
+        lowRelay { "low" }, midRelay { "mid" }, highRelay { "high" },
+        delayMixRelay { "delayMix" }, delayTimeRelay { "delayTime" }, delayFbRelay { "delayFb" },
+        chorusRelay { "chorus" }, reverbRelay { "reverb" }, levelRelay { "level" };
+    juce::WebComboBoxRelay     distRelay { "distType" };
+    juce::WebToggleButtonRelay cabRelay  { "cab" };
 
-    juce::Label    distLabel;
-    juce::ComboBox distBox;
-    std::unique_ptr<ComboBoxAttachment> distAtt;
+    juce::WebBrowserComponent webView;
 
-    juce::ToggleButton cabButton { "CAB SIM" };
-    std::unique_ptr<ButtonAttachment> cabAtt;
+    std::vector<std::unique_ptr<juce::WebSliderParameterAttachment>> sliderAtts;
+    std::unique_ptr<juce::WebComboBoxParameterAttachment>     distAtt;
+    std::unique_ptr<juce::WebToggleButtonParameterAttachment> cabAtt;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SoundBoxEditor)
 };
