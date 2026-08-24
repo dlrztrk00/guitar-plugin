@@ -16,7 +16,12 @@
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
     user-select:none; -webkit-user-select:none; overflow-x:hidden;
   }
-  .wrap { padding:12px 14px 18px; max-width:440px; margin:0 auto; }
+  .wrap { padding:12px 16px 16px; max-width:780px; margin:0 auto; }
+
+  /* landscape: amp+cab on the left, pedalboard on the right */
+  .rig { display:flex; gap:14px; align-items:stretch; margin-top:4px; }
+  .left { flex:1 1 0; min-width:300px; display:flex; flex-direction:column; }
+  .right { flex:1 1 0; min-width:300px; display:flex; }
   header { display:flex; align-items:baseline; gap:.5rem; }
   h1 { font-size:1.05rem; margin:0; letter-spacing:-.02em; color:#eef1f4; }
   h1 .a { color:var(--accent); }
@@ -57,7 +62,7 @@
 
   /* cabinet */
   .cab {
-    position:relative; height:96px; margin-top:-2px; border-radius:4px 4px 12px 12px;
+    position:relative; flex:1 1 auto; min-height:150px; margin-top:-2px; border-radius:4px 4px 12px 12px;
     background:linear-gradient(#181a1e,#0b0c0f); border:1px solid rgba(0,0,0,.7);
     box-shadow:inset 0 2px 0 rgba(255,255,255,.06), inset 0 -3px 10px rgba(0,0,0,.6);
     overflow:hidden;
@@ -74,17 +79,16 @@
     font-size:.54rem; letter-spacing:.22em; text-transform:uppercase; color:rgba(255,255,255,.9);
     text-shadow:0 1px 3px rgba(0,0,0,.9); }
 
-  /* pedalboard */
+  /* pedalboard — 2×2 grid filling the right column */
   .board {
-    display:flex; gap:0; overflow-x:auto; margin-top:12px; padding:14px 6px 8px;
+    flex:1 1 auto; display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:14px 12px;
     border-radius:10px;
     background:repeating-linear-gradient(180deg,#34383f 0 9px,#2a2d33 9px 12px,#23262b 12px 21px,#191b1f 21px 24px);
     border:1px solid rgba(0,0,0,.7);
     box-shadow:0 14px 26px -18px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.14);
-    scrollbar-width:thin;
   }
   .stomp {
-    flex:1 1 0; min-width:82px; border-radius:10px; padding:8px 5px 6px; margin:0 3px;
+    min-width:0; border-radius:10px; padding:8px 5px 7px;
     display:flex; flex-direction:column; align-items:center; gap:5px; color:#14140f;
     background:
       radial-gradient(circle at 8px 8px,#17181c 0 1.4px,transparent 2px),
@@ -96,6 +100,15 @@
   .sb-name { margin-top:auto; font-size:.56rem; font-weight:800; letter-spacing:.1em; color:#16160f; opacity:.85; }
   .sb-led { width:8px; height:8px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#3a3a3a,#141414); }
   .sb-led.on { background:radial-gradient(circle at 35% 30%,#ff8a7a,#e01f1f 70%); box-shadow:0 0 6px #ff3b3b,0 0 11px #ff2a2a; }
+  .sb-switch { width:34px; height:34px; border-radius:50%; padding:0; cursor:pointer; margin-top:2px;
+    background:radial-gradient(circle at 50% 32%,#4a4d54,#191b1f 72%); border:1px solid rgba(0,0,0,.6);
+    box-shadow:0 4px 6px -1px rgba(0,0,0,.6), inset 0 1.5px 1px rgba(255,255,255,.25);
+    display:grid; place-items:center; }
+  .sb-switch:active { transform:translateY(2px); }
+  .sb-cap { width:16px; height:16px; border-radius:50%;
+    background:radial-gradient(circle at 40% 32%,#d6dae0,#6d7178 65%,#34363b);
+    box-shadow:inset 0 -1px 2px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.7); }
+  .stomp.off { filter:saturate(.5) brightness(.8); }
 
   /* knob */
   .knob { display:flex; flex-direction:column; align-items:center; gap:3px; }
@@ -133,16 +146,21 @@
       <label class="pick" id="songWrap"><span>SONG</span><select id="song"></select></label>
     </div>
 
-    <div class="amp" id="amp">
-      <div class="amp-top"><div class="logo">SOUND<span>//</span>BOX</div><span class="jewel"></span></div>
-      <div class="amp-panel">
-        <div class="krow" id="ampKnobs"></div>
-        <div class="amp-row"><button class="toggle" id="cab">CAB SIM</button></div>
+    <div class="rig">
+      <div class="left">
+        <div class="amp" id="amp">
+          <div class="amp-top"><div class="logo">SOUND<span>//</span>BOX</div><span class="jewel"></span></div>
+          <div class="amp-panel">
+            <div class="krow" id="ampKnobs"></div>
+            <div class="amp-row"><button class="toggle" id="cab">CAB SIM</button></div>
+          </div>
+        </div>
+        <div class="cab" id="cabVisual"><span class="cab-badge" id="badge">CLEAN</span></div>
+      </div>
+      <div class="right">
+        <div class="board" id="board"></div>
       </div>
     </div>
-    <div class="cab" id="cabVisual"><span class="cab-badge" id="badge">CLEAN</span></div>
-
-    <div class="board" id="board"></div>
   </div>
 
 <script type="module">
@@ -198,25 +216,30 @@
   // pedalboard — 4 stompboxes
   const board=document.getElementById("board");
   const dist=Juce.getComboBoxState("distType");
-  function stompbox(name, pc, build) {
+  function stompbox(name, pc, onId, build) {
     const box=el("div","stomp"); box.style.setProperty("--pc",pc);
     const knobs=el("div","knobs"); box.appendChild(knobs);
     build(knobs, box);
     const nm=el("div","sb-name"); nm.textContent=name; box.appendChild(nm);
-    const led=el("span","sb-led on"); box.appendChild(led);
-    board.appendChild(box);
+    const led=el("span","sb-led"); box.appendChild(led);
+    const sw=el("button","sb-switch"); sw.appendChild(el("span","sb-cap")); box.appendChild(sw);
+
+    const on=Juce.getToggleState(onId);
+    sw.onclick=()=>on.setValue(!on.getValue());
+    const paint=()=>{ const v=on.getValue(); led.classList.toggle("on",v); box.classList.toggle("off",!v); };
+    on.valueChangedEvent.addListener(paint); paint();
   }
-  stompbox("SQUISH","#4a86b0",(k)=>makeKnob(k,"comp","COMP","pct","#4a86b0"));
-  stompbox("OVERDRIVE","#d98a3d",(k,box)=>{
+  stompbox("SQUISH","#4a86b0","compOn",(k)=>makeKnob(k,"comp","COMP","pct","#4a86b0"));
+  stompbox("OVERDRIVE","#d98a3d","driveOn",(k,box)=>{
     makeKnob(k,"drive","DRIVE","pct","#d98a3d");
     const seg=el("div","seg");
     const btns=dist.properties.choices.map((c,i)=>{ const b=el("button"); b.textContent=c[0]; b.onclick=()=>dist.setChoiceIndex(i); seg.appendChild(b); return b; });
-    box.insertBefore(seg, box.querySelector(".sb-name"));
+    box.appendChild(seg);
     const paint=()=>btns.forEach((b,i)=>b.classList.toggle("on",i===dist.getChoiceIndex()));
     dist.valueChangedEvent.addListener(paint); paint();
   });
-  stompbox("SHIMMER","#3aa6a0",(k)=>makeKnob(k,"chorus","DEPTH","pct","#3aa6a0"));
-  stompbox("ECHO","#6a8f4f",(k)=>{
+  stompbox("SHIMMER","#3aa6a0","chorusOn",(k)=>makeKnob(k,"chorus","DEPTH","pct","#3aa6a0"));
+  stompbox("ECHO","#6a8f4f","delayOn",(k)=>{
     makeKnob(k,"delayMix","MIX","pct","#6a8f4f");
     makeKnob(k,"delayTime","TIME","ms","#6a8f4f");
     makeKnob(k,"delayFb","RPTS","pct","#6a8f4f");

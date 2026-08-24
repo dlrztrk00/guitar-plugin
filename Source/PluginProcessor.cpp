@@ -32,6 +32,12 @@ SoundBoxProcessor::createParameterLayout()
         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "drive", 1 }, "Drive",
         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
+
+    // per-pedal footswitches (true = engaged)
+    layout.add (std::make_unique<AudioParameterBool> (ParameterID { "compOn", 1 },   "Comp On",   true));
+    layout.add (std::make_unique<AudioParameterBool> (ParameterID { "driveOn", 1 },  "Drive On",  true));
+    layout.add (std::make_unique<AudioParameterBool> (ParameterID { "chorusOn", 1 }, "Chorus On", true));
+    layout.add (std::make_unique<AudioParameterBool> (ParameterID { "delayOn", 1 },  "Delay On",  true));
     layout.add (std::make_unique<AudioParameterChoice> (ParameterID { "distType", 1 }, "Distortion",
         StringArray { "Soft", "Hard", "Fuzz" }, 0));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "low", 1 }, "Low",
@@ -135,7 +141,7 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 
     // 2) compressor (+ makeup) — mirrors the web mapping
     const float compAmt = get ("comp");
-    if (compAmt > 0.001f)
+    if (get ("compOn") > 0.5f && compAmt > 0.001f)
     {
         comp.setThreshold (-40.0f * compAmt);
         comp.setRatio (1.0f + 11.0f * compAmt);
@@ -145,9 +151,10 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         buffer.applyGain (1.0f + 1.5f * compAmt);
     }
 
-    // 3) distortion (oversampled)
+    // 3) distortion (oversampled) — only when the pedal is engaged
     const float drive = get ("drive");
     const int   type  = (int) get ("distType");
+    if (get ("driveOn") > 0.5f)
     {
         auto os = oversampler->processSamplesUp (block);
         for (size_t ch = 0; ch < os.getNumChannels(); ++ch)
@@ -180,7 +187,7 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 
     // 6) chorus (only when engaged)
     const float chAmt = get ("chorus");
-    if (chAmt > 0.001f)
+    if (get ("chorusOn") > 0.5f && chAmt > 0.001f)
     {
         chorus.setMix (chAmt);
         chorus.process (ctx);
@@ -188,7 +195,7 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 
     // 7) delay (echo) with feedback — wet added on top of dry
     const float dmix = get ("delayMix");
-    if (dmix > 0.0001f)
+    if (get ("delayOn") > 0.5f && dmix > 0.0001f)
     {
         delayLine.setDelay (juce::jlimit (1.0f, (float) (fs * 1.0), get ("delayTime") * (float) fs));
         const float dfb = get ("delayFb");

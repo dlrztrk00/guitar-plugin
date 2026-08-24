@@ -21,7 +21,11 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
                    .withOptionsFrom (reverbRelay)
                    .withOptionsFrom (levelRelay)
                    .withOptionsFrom (distRelay)
-                   .withOptionsFrom (cabRelay))
+                   .withOptionsFrom (cabRelay)
+                   .withOptionsFrom (compOnRelay)
+                   .withOptionsFrom (driveOnRelay)
+                   .withOptionsFrom (chorusOnRelay)
+                   .withOptionsFrom (delayOnRelay))
 {
     auto& apvts = proc.apvts;
     auto bindSlider = [&] (const juce::String& id, juce::WebSliderRelay& relay)
@@ -45,15 +49,24 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
 
     distAtt = std::make_unique<juce::WebComboBoxParameterAttachment> (
         *apvts.getParameter ("distType"), distRelay, nullptr);
-    cabAtt = std::make_unique<juce::WebToggleButtonParameterAttachment> (
-        *apvts.getParameter ("cab"), cabRelay, nullptr);
+
+    auto bindToggle = [&] (const juce::String& id, juce::WebToggleButtonRelay& relay)
+    {
+        toggleAtts.push_back (std::make_unique<juce::WebToggleButtonParameterAttachment> (
+            *apvts.getParameter (id), relay, nullptr));
+    };
+    bindToggle ("cab", cabRelay);
+    bindToggle ("compOn", compOnRelay);
+    bindToggle ("driveOn", driveOnRelay);
+    bindToggle ("chorusOn", chorusOnRelay);
+    bindToggle ("delayOn", delayOnRelay);
 
     addAndMakeVisible (webView);
     webView.goToURL (juce::WebBrowserComponent::getResourceProviderRoot());
 
     setResizable (true, true);
-    setResizeLimits (360, 460, 900, 1100);
-    setSize (440, 600);
+    setResizeLimits (660, 380, 1400, 900);
+    setSize (840, 460);
 }
 
 static const char* mimeForExtension (const juce::String& ext)

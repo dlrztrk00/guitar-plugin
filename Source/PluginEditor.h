@@ -27,12 +27,14 @@ private:
         chorusRelay { "chorus" }, reverbRelay { "reverb" }, levelRelay { "level" };
     juce::WebComboBoxRelay     distRelay { "distType" };
     juce::WebToggleButtonRelay cabRelay  { "cab" };
+    juce::WebToggleButtonRelay compOnRelay { "compOn" }, driveOnRelay { "driveOn" },
+        chorusOnRelay { "chorusOn" }, delayOnRelay { "delayOn" };
 
     juce::WebBrowserComponent webView;
 
     std::vector<std::unique_ptr<juce::WebSliderParameterAttachment>> sliderAtts;
-    std::unique_ptr<juce::WebComboBoxParameterAttachment>     distAtt;
-    std::unique_ptr<juce::WebToggleButtonParameterAttachment> cabAtt;
+    std::vector<std::unique_ptr<juce::WebToggleButtonParameterAttachment>> toggleAtts;
+    std::unique_ptr<juce::WebComboBoxParameterAttachment> distAtt;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SoundBoxEditor)
 };
