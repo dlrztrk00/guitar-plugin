@@ -3,8 +3,8 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 
-// The audio engine. Step 1: a clean passthrough that loads in Logic.
-// Effects (drive, EQ, delay, reverb…) get ported here one at a time.
+// The audio engine. Effects get ported from the web SoundBox one at a time.
+// Step 2: distortion (drive + soft/hard/fuzz) with 4x oversampling, plus output level.
 class SoundBoxProcessor : public juce::AudioProcessor
 {
 public:
@@ -31,9 +31,15 @@ public:
     const juce::String getProgramName (int) override { return {}; }
     void changeProgramName (int, const juce::String&) override {}
 
-    void getStateInformation (juce::MemoryBlock&) override {}
-    void setStateInformation (const void*, int) override {}
+    void getStateInformation (juce::MemoryBlock&) override;
+    void setStateInformation (const void*, int) override;
+
+    // parameters (drive, distortion type, output level) — visible to the editor
+    juce::AudioProcessorValueTreeState apvts;
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
 private:
+    std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SoundBoxProcessor)
 };
