@@ -3,11 +3,14 @@
 SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
     : AudioProcessorEditor (&p), proc (p)
 {
-    addKnob (drive, "drive", "DRIVE");
-    addKnob (low,   "low",   "LOW");
-    addKnob (mid,   "mid",   "MID");
-    addKnob (high,  "high",  "HIGH");
-    addKnob (level, "level", "LEVEL");
+    addKnob (drive,     "drive",     "DRIVE");
+    addKnob (low,       "low",       "LOW");
+    addKnob (mid,       "mid",       "MID");
+    addKnob (high,      "high",      "HIGH");
+    addKnob (delayMix,  "delayMix",  "DELAY");
+    addKnob (delayTime, "delayTime", "TIME");
+    addKnob (delayFb,   "delayFb",   "F.BACK");
+    addKnob (level,     "level",     "LEVEL");
 
     distLabel.setText ("DIST", juce::dontSendNotification);
     distLabel.setJustificationType (juce::Justification::centred);
@@ -21,7 +24,7 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
     addAndMakeVisible (distBox);
     distAtt = std::make_unique<ComboBoxAttachment> (proc.apvts, "distType", distBox);
 
-    setSize (620, 300);
+    setSize (560, 420);
 }
 
 void SoundBoxEditor::addKnob (KnobUI& k, const juce::String& paramId, const juce::String& text)
@@ -54,7 +57,7 @@ void SoundBoxEditor::paint (juce::Graphics& g)
 
     g.setColour (juce::Colour (0xff7f8a78));
     g.setFont (juce::FontOptions (12.0f));
-    g.drawText ("distortion + 3-band EQ — AU plugin",
+    g.drawText ("distortion + EQ + delay — AU plugin",
                 getLocalBounds().reduced (24).removeFromTop (66).removeFromBottom (20),
                 juce::Justification::centredLeft);
 }
@@ -64,22 +67,21 @@ void SoundBoxEditor::resized()
     auto area = getLocalBounds().reduced (24);
     area.removeFromTop (60); // header
 
-    auto row = area.removeFromTop (150);
-    const int knobW = row.getWidth() / 5;
-
-    auto place = [&] (KnobUI& k)
+    auto placeRow = [&] (juce::Rectangle<int> row, std::initializer_list<KnobUI*> knobs)
     {
-        auto col = row.removeFromLeft (knobW);
-        k.label.setBounds (col.removeFromTop (18));
-        k.slider.setBounds (col);
+        const int knobW = row.getWidth() / (int) knobs.size();
+        for (auto* k : knobs)
+        {
+            auto col = row.removeFromLeft (knobW);
+            k->label.setBounds (col.removeFromTop (18));
+            k->slider.setBounds (col);
+        }
     };
-    place (drive);
-    place (low);
-    place (mid);
-    place (high);
-    place (level);
 
-    // DIST selector below the drive knob
+    placeRow (area.removeFromTop (140), { &drive, &low, &mid, &high });
+    area.removeFromTop (10);
+    placeRow (area.removeFromTop (140), { &delayMix, &delayTime, &delayFb, &level });
+
     auto bottom = area.removeFromTop (34);
     distLabel.setBounds (bottom.removeFromLeft (44));
     distBox.setBounds (bottom.removeFromLeft (140));

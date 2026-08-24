@@ -47,6 +47,16 @@ SoundBoxProcessor::createParameterLayout()
         NormalisableRange<float> (-18.0f, 18.0f, 0.1f), 0.0f));
 
     layout.add (std::make_unique<AudioParameterFloat> (
+        ParameterID { "delayMix", 1 }, "Delay",
+        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
+    layout.add (std::make_unique<AudioParameterFloat> (
+        ParameterID { "delayTime", 1 }, "Delay Time",
+        NormalisableRange<float> (0.02f, 1.0f, 0.001f), 0.3f));
+    layout.add (std::make_unique<AudioParameterFloat> (
+        ParameterID { "delayFb", 1 }, "Feedback",
+        NormalisableRange<float> (0.0f, 0.9f, 0.001f), 0.35f));
+
+    layout.add (std::make_unique<AudioParameterFloat> (
         ParameterID { "level", 1 }, "Level",
         NormalisableRange<float> (0.0f, 1.5f, 0.001f), 1.0f));
 
@@ -78,6 +88,10 @@ void SoundBoxProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     lowShelf.prepare (spec);
     midPeak.prepare (spec);
     highShelf.prepare (spec);
+
+    delayLine.setMaximumDelayInSamples ((int) (sampleRate * 1.0) + 2);
+    delayLine.prepare (spec);
+    delayLine.reset();
 }
 
 bool SoundBoxProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -135,6 +149,29 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     lowShelf.process (ctx);
     midPeak.process (ctx);
     highShelf.process (ctx);
+
+    // delay (echo) — wet added on top of dry, with a feedback loop
+    const float dmix  = apvts.getRawParameterValue ("delayMix")->load();
+    const float dtime = apvts.getRawParameterValue ("delayTime")->load();
+    const float dfb   = apvts.getRawParameterValue ("delayFb")->load();
+
+    if (dmix > 0.0001f)
+    {
+        delayLine.setDelay (juce::jlimit (1.0f, (float) (fs * 1.0), dtime * (float) fs));
+        const int numCh = buffer.getNumChannels();
+        const int numSm = buffer.getNumSamples();
+        for (int ch = 0; ch < numCh; ++ch)
+        {
+            auto* data = buffer.getWritePointer (ch);
+            for (int i = 0; i < numSm; ++i)
+            {
+                const float in = data[i];
+                const float echo = delayLine.popSample (ch, -1.0f, true);
+                delayLine.pushSample (ch, in + echo * dfb);
+                data[i] = in + echo * dmix;
+            }
+        }
+    }
 
     buffer.applyGain (level);
 }

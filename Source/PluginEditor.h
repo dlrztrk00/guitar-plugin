@@ -29,7 +29,7 @@ private:
 
     SoundBoxProcessor& proc;
 
-    KnobUI drive, low, mid, high, level;
+    KnobUI drive, low, mid, high, delayMix, delayTime, delayFb, level;
 
     juce::Label    distLabel;
     juce::ComboBox distBox;

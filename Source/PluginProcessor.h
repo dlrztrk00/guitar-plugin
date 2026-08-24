@@ -47,5 +47,8 @@ private:
     Filter lowShelf, midPeak, highShelf;
     double fs = 44100.0;
 
+    // delay (echo) with feedback
+    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine { 96000 };
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SoundBoxProcessor)
 };
