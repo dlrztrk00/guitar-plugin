@@ -3,6 +3,8 @@
 SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
     : AudioProcessorEditor (&p), proc (p)
 {
+    addKnob (gate,      "gate",      "GATE");
+    addKnob (comp,      "comp",      "COMP");
     addKnob (drive,     "drive",     "DRIVE");
     addKnob (low,       "low",       "LOW");
     addKnob (mid,       "mid",       "MID");
@@ -10,10 +12,12 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
     addKnob (delayMix,  "delayMix",  "DELAY");
     addKnob (delayTime, "delayTime", "TIME");
     addKnob (delayFb,   "delayFb",   "F.BACK");
+    addKnob (chorus,    "chorus",    "CHORUS");
+    addKnob (reverb,    "reverb",    "REVERB");
     addKnob (level,     "level",     "LEVEL");
 
     distLabel.setText ("DIST", juce::dontSendNotification);
-    distLabel.setJustificationType (juce::Justification::centred);
+    distLabel.setJustificationType (juce::Justification::centredRight);
     distLabel.setColour (juce::Label::textColourId, juce::Colour (0xffc6ccd4));
     distLabel.setFont (juce::FontOptions (12.0f));
     addAndMakeVisible (distLabel);
@@ -24,13 +28,18 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
     addAndMakeVisible (distBox);
     distAtt = std::make_unique<ComboBoxAttachment> (proc.apvts, "distType", distBox);
 
-    setSize (560, 420);
+    cabButton.setColour (juce::ToggleButton::textColourId, juce::Colour (0xffc6ccd4));
+    cabButton.setColour (juce::ToggleButton::tickColourId, juce::Colour (0xffe8b64c));
+    addAndMakeVisible (cabButton);
+    cabAtt = std::make_unique<ButtonAttachment> (proc.apvts, "cab", cabButton);
+
+    setSize (560, 520);
 }
 
 void SoundBoxEditor::addKnob (KnobUI& k, const juce::String& paramId, const juce::String& text)
 {
     k.slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-    k.slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 60, 18);
+    k.slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 58, 16);
     k.slider.setColour (juce::Slider::rotarySliderFillColourId, juce::Colour (0xffe8b64c));
     k.slider.setColour (juce::Slider::thumbColourId, juce::Colour (0xfff1e6cf));
     k.slider.setColour (juce::Slider::textBoxTextColourId, juce::Colour (0xffe8b64c));
@@ -40,7 +49,7 @@ void SoundBoxEditor::addKnob (KnobUI& k, const juce::String& paramId, const juce
     k.label.setText (text, juce::dontSendNotification);
     k.label.setJustificationType (juce::Justification::centred);
     k.label.setColour (juce::Label::textColourId, juce::Colour (0xffc6ccd4));
-    k.label.setFont (juce::FontOptions (12.0f));
+    k.label.setFont (juce::FontOptions (11.0f));
     addAndMakeVisible (k.label);
 
     k.attach = std::make_unique<SliderAttachment> (proc.apvts, paramId, k.slider);
@@ -52,20 +61,20 @@ void SoundBoxEditor::paint (juce::Graphics& g)
 
     g.setColour (juce::Colours::white);
     g.setFont (juce::FontOptions (24.0f, juce::Font::bold));
-    g.drawText ("SOUND//BOX", getLocalBounds().reduced (24).removeFromTop (44),
+    g.drawText ("SOUND//BOX", getLocalBounds().reduced (22).removeFromTop (40),
                 juce::Justification::centredLeft);
 
     g.setColour (juce::Colour (0xff7f8a78));
     g.setFont (juce::FontOptions (12.0f));
-    g.drawText ("distortion + EQ + delay — AU plugin",
-                getLocalBounds().reduced (24).removeFromTop (66).removeFromBottom (20),
+    g.drawText ("guitar multi-fx — AU plugin",
+                getLocalBounds().reduced (22).removeFromTop (60).removeFromBottom (20),
                 juce::Justification::centredLeft);
 }
 
 void SoundBoxEditor::resized()
 {
-    auto area = getLocalBounds().reduced (24);
-    area.removeFromTop (60); // header
+    auto area = getLocalBounds().reduced (22);
+    area.removeFromTop (54); // header
 
     auto placeRow = [&] (juce::Rectangle<int> row, std::initializer_list<KnobUI*> knobs)
     {
@@ -73,16 +82,21 @@ void SoundBoxEditor::resized()
         for (auto* k : knobs)
         {
             auto col = row.removeFromLeft (knobW);
-            k->label.setBounds (col.removeFromTop (18));
+            k->label.setBounds (col.removeFromTop (16));
             k->slider.setBounds (col);
         }
     };
 
-    placeRow (area.removeFromTop (140), { &drive, &low, &mid, &high });
-    area.removeFromTop (10);
-    placeRow (area.removeFromTop (140), { &delayMix, &delayTime, &delayFb, &level });
+    placeRow (area.removeFromTop (120), { &gate, &comp, &drive, &low });
+    area.removeFromTop (8);
+    placeRow (area.removeFromTop (120), { &mid, &high, &delayMix, &delayTime });
+    area.removeFromTop (8);
+    placeRow (area.removeFromTop (120), { &delayFb, &chorus, &reverb, &level });
 
-    auto bottom = area.removeFromTop (34);
+    area.removeFromTop (10);
+    auto bottom = area.removeFromTop (30);
     distLabel.setBounds (bottom.removeFromLeft (44));
-    distBox.setBounds (bottom.removeFromLeft (140));
+    distBox.setBounds (bottom.removeFromLeft (130));
+    bottom.removeFromLeft (20);
+    cabButton.setBounds (bottom.removeFromLeft (120));
 }

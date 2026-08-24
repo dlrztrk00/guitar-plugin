@@ -3,8 +3,8 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 
-// The audio engine. Effects get ported from the web SoundBox one at a time.
-// Step 2: distortion (drive + soft/hard/fuzz) with 4x oversampling, plus output level.
+// The full SoundBox engine, ported from the web version.
+// Chain: gate → comp → drive → EQ → cab → chorus → delay → reverb → level → limiter.
 class SoundBoxProcessor : public juce::AudioProcessor
 {
 public:
@@ -23,7 +23,7 @@ public:
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
-    double getTailLengthSeconds() const override { return 0.0; }
+    double getTailLengthSeconds() const override { return 2.5; }
 
     int getNumPrograms() override { return 1; }
     int getCurrentProgram() override { return 0; }
@@ -34,21 +34,24 @@ public:
     void getStateInformation (juce::MemoryBlock&) override;
     void setStateInformation (const void*, int) override;
 
-    // parameters (drive, distortion type, output level) — visible to the editor
     juce::AudioProcessorValueTreeState apvts;
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
 private:
-    std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
-
-    // 3-band EQ (stereo) — low shelf, mid peak, high shelf
     using Filter = juce::dsp::ProcessorDuplicator<
         juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>>;
-    Filter lowShelf, midPeak, highShelf;
+
     double fs = 44100.0;
 
-    // delay (echo) with feedback
+    juce::dsp::NoiseGate<float> gate;
+    juce::dsp::Compressor<float> comp;
+    std::unique_ptr<juce::dsp::Oversampling<float>> oversampler; // for drive
+    Filter lowShelf, midPeak, highShelf;                          // EQ
+    Filter cabHP, cabLP, cabDip;                                  // cabinet sim
+    juce::dsp::Chorus<float> chorus;
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine { 96000 };
+    juce::dsp::Reverb reverb;
+    juce::dsp::Limiter<float> limiter;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SoundBoxProcessor)
 };
