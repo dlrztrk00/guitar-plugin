@@ -51,7 +51,9 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
     addAndMakeVisible (webView);
     webView.goToURL (juce::WebBrowserComponent::getResourceProviderRoot());
 
-    setSize (460, 560);
+    setResizable (true, true);
+    setResizeLimits (360, 460, 900, 1100);
+    setSize (440, 600);
 }
 
 static const char* mimeForExtension (const juce::String& ext)
@@ -59,30 +61,35 @@ static const char* mimeForExtension (const juce::String& ext)
     if (ext == "html") return "text/html";
     if (ext == "js")   return "text/javascript";
     if (ext == "css")  return "text/css";
+    if (ext == "jpg" || ext == "jpeg") return "image/jpeg";
+    if (ext == "png")  return "image/png";
     return "application/octet-stream";
 }
 
 std::optional<juce::WebBrowserComponent::Resource>
 SoundBoxEditor::getResource (const juce::String& url)
 {
-    // map the requested path to an embedded resource
-    juce::String name = (url == "/" ? juce::String ("index.html")
-                                     : url.fromFirstOccurrenceOf ("/", false, false));
+    // the embedded resources are keyed by base filename (index.html, juce.js, top.jpg…)
+    const juce::String name = (url == "/" ? juce::String ("index.html")
+                                          : url.fromLastOccurrenceOf ("/", false, false));
 
-    int size = 0;
-    const char* data = nullptr;
+    for (int i = 0; i < BinaryData::namedResourceListSize; ++i)
+    {
+        if (name == juce::String (BinaryData::originalFilenames[i]))
+        {
+            int size = 0;
+            const char* data = BinaryData::getNamedResource (BinaryData::namedResourceList[i], size);
+            if (data == nullptr)
+                break;
 
-    if (name == "index.html")                    data = BinaryData::index_html,               size = BinaryData::index_htmlSize;
-    else if (name == "js/juce.js")               data = BinaryData::juce_js,                  size = BinaryData::juce_jsSize;
-    else if (name == "js/check_native_interop.js") data = BinaryData::check_native_interop_js, size = BinaryData::check_native_interop_jsSize;
-
-    if (data == nullptr)
-        return std::nullopt;
-
-    const auto ext = name.fromLastOccurrenceOf (".", false, false);
-    std::vector<std::byte> bytes ((size_t) size);
-    std::memcpy (bytes.data(), data, (size_t) size);
-    return juce::WebBrowserComponent::Resource { std::move (bytes), juce::String (mimeForExtension (ext)) };
+            const auto ext = name.fromLastOccurrenceOf (".", false, false);
+            std::vector<std::byte> bytes ((size_t) size);
+            std::memcpy (bytes.data(), data, (size_t) size);
+            return juce::WebBrowserComponent::Resource { std::move (bytes),
+                                                         juce::String (mimeForExtension (ext)) };
+        }
+    }
+    return std::nullopt;
 }
 
 void SoundBoxEditor::paint (juce::Graphics& g)

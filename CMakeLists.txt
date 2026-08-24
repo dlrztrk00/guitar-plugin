@@ -41,6 +41,13 @@ juce_add_binary_data(SoundBoxData
     WebUI/index.html
     WebUI/js/juce.js
     WebUI/js/check_native_interop.js
+    WebUI/img/top.jpg
+    WebUI/img/strokes.jpg
+    WebUI/img/am.jpg
+    WebUI/img/catfish.jpg
+    WebUI/img/fike.jpg
+    WebUI/img/fender.jpg
+    WebUI/img/5sos.jpg
 )
 
 target_compile_definitions(SoundBox PUBLIC

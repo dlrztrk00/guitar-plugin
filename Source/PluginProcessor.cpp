@@ -31,7 +31,7 @@ SoundBoxProcessor::createParameterLayout()
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "comp", 1 }, "Comp",
         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "drive", 1 }, "Drive",
-        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f));
+        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
     layout.add (std::make_unique<AudioParameterChoice> (ParameterID { "distType", 1 }, "Distortion",
         StringArray { "Soft", "Hard", "Fuzz" }, 0));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "low", 1 }, "Low",
@@ -83,6 +83,7 @@ void SoundBoxProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     oversampler->initProcessing ((size_t) samplesPerBlock);
     setLatencySamples ((int) oversampler->getLatencyInSamples());
 
+    dcBlock.prepare (spec);
     lowShelf.prepare (spec); midPeak.prepare (spec); highShelf.prepare (spec);
     cabHP.prepare (spec);    cabLP.prepare (spec);   cabDip.prepare (spec);
 
@@ -158,6 +159,10 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         oversampler->processSamplesDown (block);
     }
 
+    // block any DC offset the (asymmetric) distortion introduced
+    *dcBlock.state = *juce::dsp::IIR::Coefficients<float>::makeHighPass (fs, 20.0f);
+    dcBlock.process (ctx);
+
     // 4) 3-band EQ
     *lowShelf.state  = *juce::dsp::IIR::Coefficients<float>::makeLowShelf  (fs, 200.0f,  0.707f, juce::Decibels::decibelsToGain (get ("low")));
     *midPeak.state   = *juce::dsp::IIR::Coefficients<float>::makePeakFilter (fs, 1000.0f, 1.0f,   juce::Decibels::decibelsToGain (get ("mid")));
@@ -173,9 +178,13 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         cabHP.process (ctx); cabLP.process (ctx); cabDip.process (ctx);
     }
 
-    // 6) chorus
-    chorus.setMix (get ("chorus"));
-    chorus.process (ctx);
+    // 6) chorus (only when engaged)
+    const float chAmt = get ("chorus");
+    if (chAmt > 0.001f)
+    {
+        chorus.setMix (chAmt);
+        chorus.process (ctx);
+    }
 
     // 7) delay (echo) with feedback — wet added on top of dry
     const float dmix = get ("delayMix");
@@ -196,15 +205,19 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         }
     }
 
-    // 8) reverb (dry kept full, wet scaled by the knob)
-    juce::Reverb::Parameters rp;
-    rp.roomSize = 0.75f;
-    rp.damping  = 0.4f;
-    rp.width    = 1.0f;
-    rp.dryLevel = 1.0f;
-    rp.wetLevel = get ("reverb");
-    reverb.setParameters (rp);
-    reverb.process (ctx);
+    // 8) reverb (only when engaged; dry kept full, wet scaled by the knob)
+    const float rvAmt = get ("reverb");
+    if (rvAmt > 0.001f)
+    {
+        juce::Reverb::Parameters rp;
+        rp.roomSize = 0.75f;
+        rp.damping  = 0.4f;
+        rp.width    = 1.0f;
+        rp.dryLevel = 1.0f;
+        rp.wetLevel = rvAmt;
+        reverb.setParameters (rp);
+        reverb.process (ctx);
+    }
 
     // 9) output level
     buffer.applyGain (get ("level"));
