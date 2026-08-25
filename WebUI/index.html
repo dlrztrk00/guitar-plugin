@@ -230,6 +230,7 @@
     const nm=el("div","sb-name"); nm.textContent=name; box.appendChild(nm);
     const led=el("span","sb-led"); box.appendChild(led);
     const sw=el("button","sb-switch"); sw.appendChild(el("span","sb-cap")); box.appendChild(sw);
+    board.appendChild(box);
 
     const on=Juce.getToggleState(onId);
     sw.onclick=()=>on.setValue(!on.getValue());
