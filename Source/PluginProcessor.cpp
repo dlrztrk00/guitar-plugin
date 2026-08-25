@@ -5,18 +5,19 @@
 // The same three distortion curves as the web SoundBox.
 static inline float shapeSample (float x, float drive, int type)
 {
-    if (type == 1) // hard
+    if (type == 1) // hard — softened clip (a touch of round-off, not a raw square)
     {
-        const float g = 1.0f + drive * 30.0f;
-        return juce::jlimit (-1.0f, 1.0f, g * x);
+        const float g = 1.0f + drive * 16.0f;
+        const float y = g * x;
+        return juce::jlimit (-1.0f, 1.0f, 1.5f * y - 0.5f * y * y * y);
     }
-    if (type == 2) // fuzz
+    if (type == 2) // fuzz — asymmetric, but gentler than before
     {
-        const float gp = 1.0f + drive * 90.0f;
-        const float gn = 1.0f + drive * 45.0f;
+        const float gp = 1.0f + drive * 45.0f;
+        const float gn = 1.0f + drive * 24.0f;
         return x >= 0.0f ? std::tanh (gp * x) : std::tanh (gn * x);
     }
-    const float k = 1.0f + drive * 40.0f; // soft
+    const float k = 1.0f + drive * 20.0f; // soft — smoother overdrive
     return std::tanh (k * x) / std::tanh (k);
 }
 
@@ -90,6 +91,7 @@ void SoundBoxProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     setLatencySamples ((int) oversampler->getLatencyInSamples());
 
     dcBlock.prepare (spec);
+    toneLP.prepare (spec);
     lowShelf.prepare (spec); midPeak.prepare (spec); highShelf.prepare (spec);
     cabHP.prepare (spec);    cabLP.prepare (spec);   cabDip.prepare (spec);
 
@@ -151,10 +153,11 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         buffer.applyGain (1.0f + 1.5f * compAmt);
     }
 
-    // 3) distortion (oversampled) — only when the pedal is engaged
+    // 3) distortion (oversampled) — only when engaged and turned up
     const float drive = get ("drive");
     const int   type  = (int) get ("distType");
-    if (get ("driveOn") > 0.5f)
+    const bool  driveOn = get ("driveOn") > 0.5f && drive > 0.001f;
+    if (driveOn)
     {
         auto os = oversampler->processSamplesUp (block);
         for (size_t ch = 0; ch < os.getNumChannels(); ++ch)
@@ -164,10 +167,15 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
                 d[i] = shapeSample (d[i], drive, type);
         }
         oversampler->processSamplesDown (block);
+
+        // smooth the fizz the drive adds (tone roll-off), scaled with drive
+        *toneLP.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass (
+            fs, juce::jmap (drive, 0.0f, 1.0f, 9000.0f, 5500.0f));
+        toneLP.process (ctx);
     }
 
-    // block any DC offset the (asymmetric) distortion introduced
-    *dcBlock.state = *juce::dsp::IIR::Coefficients<float>::makeHighPass (fs, 20.0f);
+    // always-on 70 Hz high-pass: kills DC, rumble and most mains hum (ground noise)
+    *dcBlock.state = *juce::dsp::IIR::Coefficients<float>::makeHighPass (fs, 70.0f);
     dcBlock.process (ctx);
 
     // 4) 3-band EQ

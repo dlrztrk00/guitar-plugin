@@ -46,7 +46,8 @@ private:
     juce::dsp::NoiseGate<float> gate;
     juce::dsp::Compressor<float> comp;
     std::unique_ptr<juce::dsp::Oversampling<float>> oversampler; // for drive
-    Filter dcBlock;                                              // removes distortion DC offset
+    Filter dcBlock;   // 80 Hz high-pass: removes DC, rumble and mains hum
+    Filter toneLP;    // gentle post-drive low-pass to tame fizz
     Filter lowShelf, midPeak, highShelf;                          // EQ
     Filter cabHP, cabLP, cabDip;                                  // cabinet sim
     juce::dsp::Chorus<float> chorus;
