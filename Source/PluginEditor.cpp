@@ -8,6 +8,14 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
       webView (Options{}
                    .withNativeIntegrationEnabled()
                    .withResourceProvider ([this] (const auto& url) { return getResource (url); })
+                   .withNativeFunction (juce::Identifier ("setOrder"),
+                       [this] (const juce::Array<juce::var>& args, auto complete)
+                       {
+                           if (args.size() >= 4)
+                               proc.setPedalOrder ((int) args[0], (int) args[1],
+                                                   (int) args[2], (int) args[3]);
+                           complete (juce::var());
+                       })
                    .withOptionsFrom (gateRelay)
                    .withOptionsFrom (compRelay)
                    .withOptionsFrom (driveRelay)

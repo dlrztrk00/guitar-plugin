@@ -133,7 +133,7 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     juce::dsp::AudioBlock<float> block (buffer);
     juce::dsp::ProcessContextReplacing<float> ctx (block);
 
-    // 1) noise gate
+    // noise gate (fixed, first)
     const float gateAmt = get ("gate");
     if (gateAmt > 0.001f)
     {
@@ -141,44 +141,82 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         gate.process (ctx);
     }
 
-    // 2) compressor (+ makeup) — mirrors the web mapping
-    const float compAmt = get ("comp");
-    if (get ("compOn") > 0.5f && compAmt > 0.001f)
+    // ── the four reorderable pedals ──
+    auto applyComp = [&]
     {
-        comp.setThreshold (-40.0f * compAmt);
-        comp.setRatio (1.0f + 11.0f * compAmt);
-        comp.setAttack (3.0f);
-        comp.setRelease (250.0f);
-        comp.process (ctx);
-        buffer.applyGain (1.0f + 1.5f * compAmt);
-    }
-
-    // 3) distortion (oversampled) — only when engaged and turned up
-    const float drive = get ("drive");
-    const int   type  = (int) get ("distType");
-    const bool  driveOn = get ("driveOn") > 0.5f && drive > 0.001f;
-    if (driveOn)
-    {
-        auto os = oversampler->processSamplesUp (block);
-        for (size_t ch = 0; ch < os.getNumChannels(); ++ch)
+        const float a = get ("comp");
+        if (get ("compOn") > 0.5f && a > 0.001f)
         {
-            auto* d = os.getChannelPointer (ch);
-            for (size_t i = 0; i < os.getNumSamples(); ++i)
-                d[i] = shapeSample (d[i], drive, type);
+            comp.setThreshold (-40.0f * a);
+            comp.setRatio (1.0f + 11.0f * a);
+            comp.setAttack (3.0f);
+            comp.setRelease (250.0f);
+            comp.process (ctx);
+            buffer.applyGain (1.0f + 1.5f * a);
         }
-        oversampler->processSamplesDown (block);
+    };
+    auto applyDrive = [&]
+    {
+        const float d = get ("drive");
+        const int   t = (int) get ("distType");
+        if (get ("driveOn") > 0.5f && d > 0.001f)
+        {
+            auto os = oversampler->processSamplesUp (block);
+            for (size_t ch = 0; ch < os.getNumChannels(); ++ch)
+            {
+                auto* p = os.getChannelPointer (ch);
+                for (size_t i = 0; i < os.getNumSamples(); ++i)
+                    p[i] = shapeSample (p[i], d, t);
+            }
+            oversampler->processSamplesDown (block);
+            *toneLP.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass (
+                fs, juce::jmap (d, 0.0f, 1.0f, 9000.0f, 5500.0f));
+            toneLP.process (ctx);
+        }
+    };
+    auto applyChorus = [&]
+    {
+        const float a = get ("chorus");
+        if (get ("chorusOn") > 0.5f && a > 0.001f) { chorus.setMix (a); chorus.process (ctx); }
+    };
+    auto applyDelay = [&]
+    {
+        const float m = get ("delayMix");
+        if (get ("delayOn") > 0.5f && m > 0.0001f)
+        {
+            delayLine.setDelay (juce::jlimit (1.0f, (float) (fs * 1.0), get ("delayTime") * (float) fs));
+            const float dfb = get ("delayFb");
+            for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+            {
+                auto* data = buffer.getWritePointer (ch);
+                for (int i = 0; i < buffer.getNumSamples(); ++i)
+                {
+                    const float in = data[i];
+                    const float echo = delayLine.popSample (ch, -1.0f, true);
+                    delayLine.pushSample (ch, in + echo * dfb);
+                    data[i] = in + echo * m;
+                }
+            }
+        }
+    };
 
-        // smooth the fizz the drive adds (tone roll-off), scaled with drive
-        *toneLP.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass (
-            fs, juce::jmap (drive, 0.0f, 1.0f, 9000.0f, 5500.0f));
-        toneLP.process (ctx);
+    const int packed = orderPacked.load();
+    for (int s = 0; s < 4; ++s)
+    {
+        switch ((packed >> (s * 2)) & 3)
+        {
+            case 0: applyComp();   break;
+            case 1: applyDrive();  break;
+            case 2: applyChorus(); break;
+            default: applyDelay(); break;
+        }
     }
 
     // always-on 70 Hz high-pass: kills DC, rumble and most mains hum (ground noise)
     *dcBlock.state = *juce::dsp::IIR::Coefficients<float>::makeHighPass (fs, 70.0f);
     dcBlock.process (ctx);
 
-    // 4) 3-band EQ
+    // 3-band EQ
     *lowShelf.state  = *juce::dsp::IIR::Coefficients<float>::makeLowShelf  (fs, 200.0f,  0.707f, juce::Decibels::decibelsToGain (get ("low")));
     *midPeak.state   = *juce::dsp::IIR::Coefficients<float>::makePeakFilter (fs, 1000.0f, 1.0f,   juce::Decibels::decibelsToGain (get ("mid")));
     *highShelf.state = *juce::dsp::IIR::Coefficients<float>::makeHighShelf (fs, 3500.0f, 0.707f, juce::Decibels::decibelsToGain (get ("high")));
@@ -193,34 +231,7 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         cabHP.process (ctx); cabLP.process (ctx); cabDip.process (ctx);
     }
 
-    // 6) chorus (only when engaged)
-    const float chAmt = get ("chorus");
-    if (get ("chorusOn") > 0.5f && chAmt > 0.001f)
-    {
-        chorus.setMix (chAmt);
-        chorus.process (ctx);
-    }
-
-    // 7) delay (echo) with feedback — wet added on top of dry
-    const float dmix = get ("delayMix");
-    if (get ("delayOn") > 0.5f && dmix > 0.0001f)
-    {
-        delayLine.setDelay (juce::jlimit (1.0f, (float) (fs * 1.0), get ("delayTime") * (float) fs));
-        const float dfb = get ("delayFb");
-        for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-        {
-            auto* data = buffer.getWritePointer (ch);
-            for (int i = 0; i < buffer.getNumSamples(); ++i)
-            {
-                const float in = data[i];
-                const float echo = delayLine.popSample (ch, -1.0f, true);
-                delayLine.pushSample (ch, in + echo * dfb);
-                data[i] = in + echo * dmix;
-            }
-        }
-    }
-
-    // 8) reverb (only when engaged; dry kept full, wet scaled by the knob)
+    // reverb (only when engaged; dry kept full, wet scaled by the knob)
     const float rvAmt = get ("reverb");
     if (rvAmt > 0.001f)
     {

@@ -37,11 +37,18 @@ public:
     juce::AudioProcessorValueTreeState apvts;
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
+    // pedal chain order (0=comp,1=drive,2=chorus,3=delay), packed 2 bits per slot
+    void setPedalOrder (int s0, int s1, int s2, int s3)
+    {
+        orderPacked.store ((s0 & 3) | ((s1 & 3) << 2) | ((s2 & 3) << 4) | ((s3 & 3) << 6));
+    }
+
 private:
     using Filter = juce::dsp::ProcessorDuplicator<
         juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>>;
 
     double fs = 44100.0;
+    std::atomic<int> orderPacked { 0 | (1 << 2) | (2 << 4) | (3 << 6) }; // comp,drive,chorus,delay
 
     juce::dsp::NoiseGate<float> gate;
     juce::dsp::Compressor<float> comp;
