@@ -16,12 +16,12 @@
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
     user-select:none; -webkit-user-select:none; overflow-x:hidden;
   }
-  .wrap { padding:12px 16px 16px; max-width:780px; margin:0 auto; }
+  .wrap { padding:12px 18px 16px; max-width:940px; margin:0 auto; }
 
-  /* landscape: amp+cab on the left, pedalboard on the right */
-  .rig { display:flex; gap:14px; align-items:stretch; margin-top:4px; }
+  /* landscape: amp+cab on the left, pedalboard (wider) on the right */
+  .rig { display:flex; gap:16px; align-items:stretch; margin-top:4px; }
   .left { flex:1 1 0; min-width:300px; display:flex; flex-direction:column; }
-  .right { flex:1 1 0; min-width:300px; display:flex; }
+  .right { flex:1.35 1 0; min-width:360px; display:flex; }
   header { display:flex; align-items:baseline; gap:.5rem; }
   h1 { font-size:1.05rem; margin:0; letter-spacing:-.02em; color:#eef1f4; }
   h1 .a { color:var(--accent); }
@@ -186,10 +186,13 @@
     const lab=el("div","k-label"); lab.textContent=label;
     const val=el("div","k-val");
     wrap.append(dial,lab,val); parent.appendChild(wrap);
-    const render=()=>{ const n=state.getNormalisedValue();
+    const render=()=>{ try {
+      const n=state.getNormalisedValue();
       ptr.style.transform=`rotate(${-135+n*270}deg)`;
       dial.style.background=`conic-gradient(from -135deg, ${kc||"var(--accent)"} ${n*270}deg, #23262b ${n*270}deg 270deg, transparent 270deg)`;
-      val.textContent=fmt[kind](state.getScaledValue()); };
+      const sv=state.getScaledValue();
+      val.textContent=Number.isFinite(sv)?fmt[kind](sv):"";
+    } catch(e){} };
     let dg=false,sy=0,sn=0;
     dial.addEventListener("pointerdown",e=>{dg=true;sy=e.clientY;sn=state.getNormalisedValue();dial.setPointerCapture(e.pointerId);state.sliderDragStarted();});
     dial.addEventListener("pointermove",e=>{if(!dg)return;let v=sn+(sy-e.clientY)/150;v=Math.max(0,Math.min(1,v));state.setNormalisedValue(v);render();});
@@ -217,6 +220,10 @@
   const board=document.getElementById("board");
   const dist=Juce.getComboBoxState("distType");
   function stompbox(name, pc, onId, build) {
+    try { buildStomp(name, pc, onId, build); }
+    catch (e) { console.error("stompbox failed:", name, e); }
+  }
+  function buildStomp(name, pc, onId, build) {
     const box=el("div","stomp"); box.style.setProperty("--pc",pc);
     const knobs=el("div","knobs"); box.appendChild(knobs);
     build(knobs, box);
@@ -233,10 +240,12 @@
   stompbox("OVERDRIVE","#d98a3d","driveOn",(k,box)=>{
     makeKnob(k,"drive","DRIVE","pct","#d98a3d");
     const seg=el("div","seg");
-    const btns=dist.properties.choices.map((c,i)=>{ const b=el("button"); b.textContent=c[0]; b.onclick=()=>dist.setChoiceIndex(i); seg.appendChild(b); return b; });
+    const choices=(dist.properties && dist.properties.choices) || ["Soft","Hard","Fuzz"];
+    const btns=choices.map((c,i)=>{ const b=el("button"); b.textContent=c[0]; b.onclick=()=>dist.setChoiceIndex(i); seg.appendChild(b); return b; });
     box.appendChild(seg);
     const paint=()=>btns.forEach((b,i)=>b.classList.toggle("on",i===dist.getChoiceIndex()));
-    dist.valueChangedEvent.addListener(paint); paint();
+    dist.valueChangedEvent.addListener(paint);
+    dist.propertiesChangedEvent.addListener(paint); paint();
   });
   stompbox("SHIMMER","#3aa6a0","chorusOn",(k)=>makeKnob(k,"chorus","DEPTH","pct","#3aa6a0"));
   stompbox("ECHO","#6a8f4f","delayOn",(k)=>{

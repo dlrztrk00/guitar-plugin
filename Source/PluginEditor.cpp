@@ -65,8 +65,8 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
     webView.goToURL (juce::WebBrowserComponent::getResourceProviderRoot());
 
     setResizable (true, true);
-    setResizeLimits (660, 380, 1400, 900);
-    setSize (840, 460);
+    setResizeLimits (720, 380, 1600, 950);
+    setSize (960, 470);
 }
 
 static const char* mimeForExtension (const juce::String& ext)
