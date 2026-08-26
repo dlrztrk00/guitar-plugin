@@ -29,6 +29,8 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
                    .withOptionsFrom (reverbRelay)
                    .withOptionsFrom (levelRelay)
                    .withOptionsFrom (distRelay)
+                   .withOptionsFrom (delayDivRelay)
+                   .withOptionsFrom (delaySyncRelay)
                    .withOptionsFrom (cabRelay)
                    .withOptionsFrom (compOnRelay)
                    .withOptionsFrom (driveOnRelay)
@@ -57,6 +59,8 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
 
     distAtt = std::make_unique<juce::WebComboBoxParameterAttachment> (
         *apvts.getParameter ("distType"), distRelay, nullptr);
+    delayDivAtt = std::make_unique<juce::WebComboBoxParameterAttachment> (
+        *apvts.getParameter ("delayDiv"), delayDivRelay, nullptr);
 
     auto bindToggle = [&] (const juce::String& id, juce::WebToggleButtonRelay& relay)
     {
@@ -64,6 +68,7 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
             *apvts.getParameter (id), relay, nullptr));
     };
     bindToggle ("cab", cabRelay);
+    bindToggle ("delaySync", delaySyncRelay);
     bindToggle ("compOn", compOnRelay);
     bindToggle ("driveOn", driveOnRelay);
     bindToggle ("chorusOn", chorusOnRelay);
@@ -75,6 +80,14 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
     setResizable (true, true);
     setResizeLimits (720, 380, 1600, 950);
     setSize (960, 470);
+
+    startTimerHz (24);
+}
+
+void SoundBoxEditor::timerCallback()
+{
+    const float lvl = juce::jlimit (0.0f, 1.0f, proc.outPeak.load());
+    webView.evaluateJavascript ("window.__meter && window.__meter(" + juce::String (lvl, 3) + ");");
 }
 
 static const char* mimeForExtension (const juce::String& ext)

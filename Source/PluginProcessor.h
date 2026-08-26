@@ -43,6 +43,9 @@ public:
         orderPacked.store ((s0 & 3) | ((s1 & 3) << 2) | ((s2 & 3) << 4) | ((s3 & 3) << 6));
     }
 
+    // output peak level (0..1), read by the editor's meter
+    std::atomic<float> outPeak { 0.0f };
+
 private:
     using Filter = juce::dsp::ProcessorDuplicator<
         juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>>;

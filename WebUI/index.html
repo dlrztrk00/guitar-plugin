@@ -58,7 +58,11 @@
     border:1px solid rgba(0,0,0,.6); box-shadow:inset 0 1px 0 rgba(255,255,255,.14), inset 0 -2px 8px rgba(0,0,0,.55);
   }
   .krow { display:grid; grid-template-columns:repeat(3,1fr); gap:10px 4px; justify-items:center; }
-  .amp-row { display:flex; justify-content:center; margin-top:10px; }
+  .amp-row { display:flex; align-items:center; gap:10px; margin-top:10px; }
+  .amp-photo { width:36px; height:24px; border-radius:4px; background:#0d0f0c center/cover;
+    border:1px solid rgba(255,255,255,.18); box-shadow:0 1px 3px rgba(0,0,0,.6); }
+  .meter { flex:1; height:8px; border-radius:4px; background:#060806; border:1px solid rgba(0,0,0,.6); overflow:hidden; }
+  .meter i { display:block; height:100%; width:0%; background:linear-gradient(90deg,#4caf50,#e8b64c 72%,#e0684c); transition:width .05s linear; }
 
   /* cabinet */
   .cab {
@@ -171,6 +175,12 @@
     font-family:inherit; font-size:.6rem; font-weight:700; cursor:pointer; }
   .seg button + button { border-left:1px solid rgba(0,0,0,.5); }
   .seg button.on { background:var(--pc); color:#141210; text-shadow:0 1px 0 rgba(255,255,255,.3); }
+  .sb-sync { display:flex; gap:4px; align-items:center; }
+  .mini { font-size:.5rem; padding:2px 5px; border-radius:5px; border:1px solid rgba(0,0,0,.5);
+    background:rgba(0,0,0,.2); color:#141210; font-weight:700; cursor:pointer; }
+  .mini.on { background:#141210; color:var(--pc); }
+  .mini-sel { font-size:.5rem; padding:1px 3px; border-radius:5px; border:1px solid rgba(0,0,0,.5);
+    background:rgba(0,0,0,.16); color:#141210; font-family:inherit; }
   .toggle { padding:4px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.14);
     background:rgba(0,0,0,.28); color:#c6ccd4; font-family:inherit; font-size:.6rem; letter-spacing:.12em; cursor:pointer; }
   .toggle.on { color:var(--accent); border-color:var(--accent); background:color-mix(in oklab,var(--accent) 16%,transparent); box-shadow:0 0 10px -3px var(--accent); }
@@ -188,10 +198,10 @@
     <div class="rig">
       <div class="left">
         <div class="amp" id="amp">
-          <div class="amp-top"><div class="logo">SOUND<span>//</span>BOX</div><span class="jewel"></span></div>
+          <div class="amp-top"><div class="logo">SOUND<span>//</span>BOX</div><div class="amp-photo" id="ampPhoto"></div><span class="jewel"></span></div>
           <div class="amp-panel">
             <div class="krow" id="ampKnobs"></div>
-            <div class="amp-row"><button class="toggle" id="cab">CAB SIM</button></div>
+            <div class="amp-row"><button class="toggle" id="cab">CAB SIM</button><div class="meter"><i id="meterFill"></i></div></div>
           </div>
         </div>
         <div class="cab" id="cabVisual"><span class="cab-badge" id="badge">CLEAN</span></div>
@@ -206,6 +216,10 @@
   import * as Juce from "./js/juce.js";
 
   const el = (t,c)=>{const e=document.createElement(t); if(c)e.className=c; return e;};
+
+  // output level meter (driven from the DSP by the editor timer)
+  const meterFill = document.getElementById("meterFill");
+  window.__meter = (v)=>{ if (meterFill) meterFill.style.width = Math.min(100, v*100) + "%"; };
 
   // parameter ranges (must match the C++ layout) — for preset normalisation
   const RANGE = {
@@ -325,10 +339,26 @@
     dist.propertiesChangedEvent.addListener(paint); paint();
   });
   stompbox("SHIMMER","#3aa6a0","chorusOn",(k)=>makeKnob(k,"chorus","DEPTH","pct","#3aa6a0"));
-  stompbox("ECHO","#6a8f4f","delayOn",(k)=>{
+  stompbox("ECHO","#6a8f4f","delayOn",(k,box)=>{
     makeKnob(k,"delayMix","MIX","pct","#6a8f4f");
     makeKnob(k,"delayTime","TIME","ms","#6a8f4f");
     makeKnob(k,"delayFb","RPTS","pct","#6a8f4f");
+    // tempo sync: lock the delay time to the host BPM
+    const sync=Juce.getToggleState("delaySync");
+    const div=Juce.getComboBoxState("delayDiv");
+    const row=el("div","sb-sync");
+    const sbtn=el("button","mini"); sbtn.textContent="SYNC";
+    sbtn.onclick=()=>sync.setValue(!sync.getValue());
+    const sel=el("select","mini-sel");
+    const choices=(div.properties&&div.properties.choices)||["1/4","1/8","1/8.","1/16","1/4."];
+    choices.forEach((c,i)=>{const o=el("option");o.value=i;o.textContent=c;sel.appendChild(o);});
+    sel.onchange=()=>div.setChoiceIndex(+sel.value);
+    row.append(sbtn, sel); box.appendChild(row);
+    const paintSync=()=>sbtn.classList.toggle("on",sync.getValue());
+    const paintDiv=()=>{ sel.value=div.getChoiceIndex(); };
+    sync.valueChangedEvent.addListener(paintSync);
+    div.valueChangedEvent.addListener(paintDiv);
+    paintSync(); paintDiv();
   });
 
   // ---- presets (artist → song → tone) ----
@@ -397,6 +427,9 @@
     const img = IMG[a.id];
     const grille = img ? `url("img/${img}") ${POS[a.id] || "center"}/cover` : "#0d0f0c";
     document.getElementById("cabVisual").style.setProperty("--grille", grille);
+    const ap = document.getElementById("ampPhoto");
+    if (img) { ap.style.background = `url("img/${img}") ${POS[a.id] || "center"}/cover`; ap.style.display = ""; }
+    else { ap.style.display = "none"; }
   }
 
   const artistSel=document.getElementById("artist");

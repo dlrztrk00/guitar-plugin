@@ -56,6 +56,9 @@ SoundBoxProcessor::createParameterLayout()
         NormalisableRange<float> (0.02f, 1.0f, 0.001f), 0.3f));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "delayFb", 1 }, "Feedback",
         NormalisableRange<float> (0.0f, 0.9f, 0.001f), 0.35f));
+    layout.add (std::make_unique<AudioParameterBool> (ParameterID { "delaySync", 1 }, "Delay Sync", false));
+    layout.add (std::make_unique<AudioParameterChoice> (ParameterID { "delayDiv", 1 }, "Delay Division",
+        StringArray { "1/4", "1/8", "1/8.", "1/16", "1/4." }, 1));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "reverb", 1 }, "Reverb",
         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "level", 1 }, "Level",
@@ -179,12 +182,26 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         const float a = get ("chorus");
         if (get ("chorusOn") > 0.5f && a > 0.001f) { chorus.setMix (a); chorus.process (ctx); }
     };
+    // delay time: free (knob) or synced to the host tempo
+    float delaySeconds = get ("delayTime");
+    if (get ("delaySync") > 0.5f)
+    {
+        double bpm = 120.0;
+        if (auto* ph = getPlayHead())
+            if (auto pos = ph->getPosition())
+                if (auto b = pos->getBpm())
+                    bpm = *b;
+        static const float factors[] = { 1.0f, 0.5f, 0.75f, 0.25f, 1.5f }; // 1/4,1/8,1/8.,1/16,1/4.
+        const int div = juce::jlimit (0, 4, (int) get ("delayDiv"));
+        delaySeconds = juce::jlimit (0.02f, 1.0f, (float) (60.0 / bpm) * factors[div]);
+    }
+
     auto applyDelay = [&]
     {
         const float m = get ("delayMix");
         if (get ("delayOn") > 0.5f && m > 0.0001f)
         {
-            delayLine.setDelay (juce::jlimit (1.0f, (float) (fs * 1.0), get ("delayTime") * (float) fs));
+            delayLine.setDelay (juce::jlimit (1.0f, (float) (fs * 1.0), delaySeconds * (float) fs));
             const float dfb = get ("delayFb");
             for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
             {
@@ -250,6 +267,12 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 
     // 10) safety limiter
     limiter.process (ctx);
+
+    // output peak meter (with a little decay) for the UI
+    float peak = 0.0f;
+    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+        peak = juce::jmax (peak, buffer.getMagnitude (ch, 0, buffer.getNumSamples()));
+    outPeak.store (juce::jmax (peak, outPeak.load() * 0.85f));
 }
 
 void SoundBoxProcessor::getStateInformation (juce::MemoryBlock& destData)
