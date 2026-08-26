@@ -85,13 +85,13 @@
 
   /* pedalboard — two rows of tall pedals (drag to reorder within a row) */
   .board {
-    flex:1 1 auto; display:flex; flex-direction:column; justify-content:center; gap:12px; padding:14px 12px;
+    flex:1 1 auto; display:flex; flex-direction:column; justify-content:center; gap:26px; padding:18px 12px;
     border-radius:10px;
     background:repeating-linear-gradient(180deg,#34383f 0 9px,#2a2d33 9px 12px,#23262b 12px 21px,#191b1f 21px 24px);
     border:1px solid rgba(0,0,0,.7);
     box-shadow:0 14px 26px -18px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.14);
   }
-  .brow { display:flex; align-items:center; justify-content:center; gap:11px; flex-wrap:wrap; }
+  .brow { display:flex; align-items:center; justify-content:center; gap:11px; flex-wrap:nowrap; overflow-x:auto; }
   .stomp {
     position:relative; flex:0 0 auto; width:92px; height:150px; border-radius:12px; padding:13px 7px 9px;
     display:flex; flex-direction:column; align-items:center; gap:5px; color:#14140f;

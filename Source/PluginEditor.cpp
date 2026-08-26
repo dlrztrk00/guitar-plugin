@@ -100,8 +100,8 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
     webView.goToURL (juce::WebBrowserComponent::getResourceProviderRoot());
 
     setResizable (true, true);
-    setResizeLimits (760, 440, 1600, 1000);
-    setSize (1000, 500);
+    setResizeLimits (760, 460, 1600, 1000);
+    setSize (1000, 530);
 
     startTimerHz (24);
 }
