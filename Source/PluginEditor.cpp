@@ -110,6 +110,14 @@ void SoundBoxEditor::timerCallback()
 {
     const float lvl = juce::jlimit (0.0f, 1.0f, proc.outPeak.load());
     webView.evaluateJavascript ("window.__meter && window.__meter(" + juce::String (lvl, 3) + ");");
+
+    juce::String bands;
+    for (int b = 0; b < SoundBoxProcessor::numBands; ++b)
+    {
+        if (b > 0) bands << ',';
+        bands << juce::String (proc.spectrum[(size_t) b].load(), 3);
+    }
+    webView.evaluateJavascript ("window.__spectrum && window.__spectrum([" + bands + "]);");
 }
 
 static const char* mimeForExtension (const juce::String& ext)

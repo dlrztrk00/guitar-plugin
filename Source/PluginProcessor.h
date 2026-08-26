@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
+#include <array>
 
 // The full SoundBox engine, ported from the web version.
 // Chain: gate → comp → drive → EQ → cab → chorus → delay → reverb → level → limiter.
@@ -46,7 +47,23 @@ public:
     // output peak level (0..1), read by the editor's meter
     std::atomic<float> outPeak { 0.0f };
 
+    // live spectrum for the amp screen — log-spaced bands, 0..1, read by the editor
+    static constexpr int fftOrder = 11;          // 2048-point FFT
+    static constexpr int fftSize  = 1 << fftOrder;
+    static constexpr int numBands = 32;
+    std::array<std::atomic<float>, numBands> spectrum {};
+
 private:
+    void pushToAnalyser (float s) noexcept;
+    void computeSpectrum() noexcept;
+
+    juce::dsp::FFT fft { fftOrder };
+    juce::dsp::WindowingFunction<float> window { (size_t) fftSize,
+                                                 juce::dsp::WindowingFunction<float>::hann };
+    std::array<float, fftSize>     fifo {};
+    std::array<float, fftSize * 2> fftData {};
+    int fifoIndex = 0;
+
     using Filter = juce::dsp::ProcessorDuplicator<
         juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>>;
 

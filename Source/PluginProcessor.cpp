@@ -341,6 +341,59 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
         peak = juce::jmax (peak, buffer.getMagnitude (ch, 0, buffer.getNumSamples()));
     outPeak.store (juce::jmax (peak, outPeak.load() * 0.85f));
+
+    // feed the spectrum analyser (post-FX, mono sum)
+    {
+        const int nCh = juce::jmax (1, buffer.getNumChannels());
+        const int nSm = buffer.getNumSamples();
+        for (int i = 0; i < nSm; ++i)
+        {
+            float s = 0.0f;
+            for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+                s += buffer.getReadPointer (ch)[i];
+            pushToAnalyser (s / (float) nCh);
+        }
+    }
+}
+
+void SoundBoxProcessor::pushToAnalyser (float s) noexcept
+{
+    if (fifoIndex == fftSize)
+    {
+        computeSpectrum();
+        fifoIndex = 0;
+    }
+    fifo[(size_t) fifoIndex++] = s;
+}
+
+void SoundBoxProcessor::computeSpectrum() noexcept
+{
+    std::memcpy (fftData.data(), fifo.data(), sizeof (float) * fftSize);
+    std::fill (fftData.begin() + fftSize, fftData.end(), 0.0f);
+    window.multiplyWithWindowingTable (fftData.data(), (size_t) fftSize);
+    fft.performFrequencyOnlyForwardTransform (fftData.data());
+
+    const float minHz   = 40.0f;
+    const float maxHz    = 12000.0f;
+    const float nyquist  = (float) fs * 0.5f;
+    const int   halfBins = fftSize / 2;
+
+    for (int b = 0; b < numBands; ++b)
+    {
+        const float f0 = minHz * std::pow (maxHz / minHz, (float) b       / numBands);
+        const float f1 = minHz * std::pow (maxHz / minHz, (float) (b + 1) / numBands);
+        int i0 = juce::jlimit (0, halfBins - 1, (int) (f0 / nyquist * halfBins));
+        int i1 = juce::jlimit (i0 + 1, halfBins, (int) (f1 / nyquist * halfBins));
+
+        float mag = 0.0f;
+        for (int i = i0; i < i1; ++i)
+            mag = juce::jmax (mag, fftData[(size_t) i]);
+
+        const float db = juce::Decibels::gainToDecibels (mag / (float) fftSize + 1.0e-9f);
+        const float v  = juce::jlimit (0.0f, 1.0f, (db + 66.0f) / 66.0f);
+        const float prev = spectrum[(size_t) b].load();
+        spectrum[(size_t) b].store (juce::jmax (v, prev * 0.75f)); // fast attack, slow decay
+    }
 }
 
 void SoundBoxProcessor::getStateInformation (juce::MemoryBlock& destData)
