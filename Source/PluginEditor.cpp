@@ -16,6 +16,41 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
                                                    (int) args[2], (int) args[3]);
                            complete (juce::var());
                        })
+                   .withNativeFunction (juce::Identifier ("loadIR"),
+                       [this] (const juce::Array<juce::var>&, auto complete)
+                       {
+                           irChooser = std::make_unique<juce::FileChooser> (
+                               "Select an impulse response", juce::File(), "*.wav;*.aiff;*.aif;*.flac");
+                           irChooser->launchAsync (
+                               juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                               [this] (const juce::FileChooser& fc)
+                               {
+                                   const auto f = fc.getResult();
+                                   if (f.existsAsFile())
+                                   {
+                                       proc.loadIR (f);
+                                       if (auto* p = proc.apvts.getParameter ("irOn"))
+                                           p->setValueNotifyingHost (1.0f);
+                                       pushIRName();
+                                   }
+                               });
+                           complete (juce::var());
+                       })
+                   .withNativeFunction (juce::Identifier ("clearIR"),
+                       [this] (const juce::Array<juce::var>&, auto complete)
+                       {
+                           proc.clearIR();
+                           if (auto* p = proc.apvts.getParameter ("irOn"))
+                               p->setValueNotifyingHost (0.0f);
+                           pushIRName();
+                           complete (juce::var());
+                       })
+                   .withNativeFunction (juce::Identifier ("requestIR"),
+                       [this] (const juce::Array<juce::var>&, auto complete)
+                       {
+                           pushIRName();
+                           complete (juce::var());
+                       })
                    .withOptionsFrom (gateRelay)
                    .withOptionsFrom (compRelay)
                    .withOptionsFrom (driveRelay)
@@ -32,6 +67,7 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
                    .withOptionsFrom (delayDivRelay)
                    .withOptionsFrom (delaySyncRelay)
                    .withOptionsFrom (cabRelay)
+                   .withOptionsFrom (irOnRelay)
                    .withOptionsFrom (compOnRelay)
                    .withOptionsFrom (driveOnRelay)
                    .withOptionsFrom (chorusOnRelay)
@@ -86,6 +122,7 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
             *apvts.getParameter (id), relay, nullptr));
     };
     bindToggle ("cab", cabRelay);
+    bindToggle ("irOn", irOnRelay);
     bindToggle ("delaySync", delaySyncRelay);
     bindToggle ("compOn", compOnRelay);
     bindToggle ("driveOn", driveOnRelay);
@@ -104,6 +141,14 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
     setSize (1000, 580);
 
     startTimerHz (24);
+}
+
+void SoundBoxEditor::pushIRName()
+{
+    const auto name = proc.hasIR() ? proc.getIRName() : juce::String();
+    const auto esc  = name.replace ("\\", "\\\\").replace ("\"", "\\\"");
+    webView.evaluateJavascript ("window.__irName && window.__irName(\"" + esc + "\", "
+                                + juce::String (proc.hasIR() ? "true" : "false") + ");");
 }
 
 void SoundBoxEditor::timerCallback()

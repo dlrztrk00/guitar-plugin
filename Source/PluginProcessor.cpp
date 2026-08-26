@@ -48,6 +48,7 @@ SoundBoxProcessor::createParameterLayout()
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "high", 1 }, "High",
         NormalisableRange<float> (-18.0f, 18.0f, 0.1f), 0.0f));
     layout.add (std::make_unique<AudioParameterBool>  (ParameterID { "cab", 1 }, "Cab Sim", false));
+    layout.add (std::make_unique<AudioParameterBool>  (ParameterID { "irOn", 1 }, "IR Cab", false));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "chorus", 1 }, "Chorus",
         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "delayMix", 1 }, "Delay",
@@ -140,6 +141,31 @@ void SoundBoxProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     limiter.prepare (spec);
     limiter.setThreshold (-1.0f);
     limiter.setRelease (200.0f);
+
+    irConv.prepare (spec);
+    if (irLoaded.load() && irPath.isNotEmpty())
+        loadIR (juce::File (irPath));
+}
+
+void SoundBoxProcessor::loadIR (const juce::File& file)
+{
+    if (! file.existsAsFile())
+        return;
+    irConv.loadImpulseResponse (file,
+                                juce::dsp::Convolution::Stereo::yes,
+                                juce::dsp::Convolution::Trim::yes,
+                                0,
+                                juce::dsp::Convolution::Normalise::yes);
+    irPath = file.getFullPathName();
+    irName = file.getFileNameWithoutExtension();
+    irLoaded.store (true);
+}
+
+void SoundBoxProcessor::clearIR()
+{
+    irLoaded.store (false);
+    irPath = {};
+    irName = {};
 }
 
 bool SoundBoxProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -316,6 +342,10 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         cabHP.process (ctx); cabLP.process (ctx); cabDip.process (ctx);
     }
 
+    // impulse-response cabinet (real speaker convolution, when loaded + engaged)
+    if (get ("irOn") > 0.5f && irLoaded.load())
+        irConv.process (ctx);
+
     // reverb (only when engaged; dry kept full, wet scaled by the knob)
     const float rvAmt = get ("reverb");
     if (rvAmt > 0.001f)
@@ -398,14 +428,22 @@ void SoundBoxProcessor::computeSpectrum() noexcept
 
 void SoundBoxProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    if (auto state = apvts.copyState().createXml())
-        copyXmlToBinary (*state, destData);
+    auto state = apvts.copyState();
+    state.setProperty ("irPath", irPath, nullptr);
+    if (auto xml = state.createXml())
+        copyXmlToBinary (*xml, destData);
 }
 
 void SoundBoxProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     if (auto xml = getXmlFromBinary (data, sizeInBytes))
-        apvts.replaceState (juce::ValueTree::fromXml (*xml));
+    {
+        auto tree = juce::ValueTree::fromXml (*xml);
+        apvts.replaceState (tree);
+        const auto p = tree.getProperty ("irPath").toString();
+        if (p.isNotEmpty())
+            loadIR (juce::File (p));
+    }
 }
 
 juce::AudioProcessorEditor* SoundBoxProcessor::createEditor() { return new SoundBoxEditor (*this); }

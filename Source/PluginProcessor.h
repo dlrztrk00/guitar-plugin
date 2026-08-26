@@ -44,6 +44,12 @@ public:
         orderPacked.store ((s0 & 3) | ((s1 & 3) << 2) | ((s2 & 3) << 4) | ((s3 & 3) << 6));
     }
 
+    // impulse-response cabinet (real speaker convolution)
+    void loadIR (const juce::File& file);
+    void clearIR();
+    juce::String getIRName() const { return irName; }
+    bool hasIR() const { return irLoaded.load(); }
+
     // output peak level (0..1), read by the editor's meter
     std::atomic<float> outPeak { 0.0f };
 
@@ -84,6 +90,10 @@ private:
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine { 96000 };
     juce::dsp::Reverb reverb;
     juce::dsp::Limiter<float> limiter;
+
+    juce::dsp::Convolution irConv { juce::dsp::Convolution::Latency { 0 } };
+    std::atomic<bool> irLoaded { false };
+    juce::String irPath, irName;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SoundBoxProcessor)
 };

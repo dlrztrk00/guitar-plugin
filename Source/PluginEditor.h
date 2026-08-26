@@ -19,8 +19,10 @@ public:
 
 private:
     std::optional<juce::WebBrowserComponent::Resource> getResource (const juce::String& url);
+    void pushIRName();
 
     SoundBoxProcessor& proc;
+    std::unique_ptr<juce::FileChooser> irChooser;
 
     // one relay per parameter (constructed before the WebView below)
     juce::WebSliderRelay gateRelay { "gate" }, compRelay { "comp" }, driveRelay { "drive" },
@@ -34,6 +36,7 @@ private:
     juce::WebComboBoxRelay     delayDivRelay { "delayDiv" };
     juce::WebToggleButtonRelay delaySyncRelay { "delaySync" };
     juce::WebToggleButtonRelay cabRelay  { "cab" };
+    juce::WebToggleButtonRelay irOnRelay { "irOn" };
     juce::WebToggleButtonRelay compOnRelay { "compOn" }, driveOnRelay { "driveOn" },
         chorusOnRelay { "chorusOn" }, delayOnRelay { "delayOn" },
         tremOnRelay { "tremOn" }, phaserOnRelay { "phaserOn" },

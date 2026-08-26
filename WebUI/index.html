@@ -68,6 +68,17 @@
   .amp-row { display:flex; align-items:center; gap:10px; margin-top:10px; }
   .amp-photo { width:36px; height:24px; border-radius:4px; background:#0d0f0c center/cover;
     border:1px solid rgba(255,255,255,.18); box-shadow:0 1px 3px rgba(0,0,0,.6); }
+  .ir-row { gap:7px; }
+  .ir-btn { padding:4px 10px; border-radius:7px; border:1px solid rgba(255,255,255,.16);
+    background:linear-gradient(#2c2e33,#17181c); color:#d7dbe0; font-family:inherit; font-size:.58rem;
+    letter-spacing:.1em; cursor:pointer; }
+  .ir-btn:active { transform:translateY(1px); }
+  .ir-name { flex:1; min-width:0; font-size:.56rem; color:#8a938c; letter-spacing:.06em;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ir-name.loaded { color:var(--accent); }
+  .ir-x { width:18px; height:18px; padding:0; border-radius:5px; border:1px solid rgba(255,255,255,.14);
+    background:rgba(0,0,0,.28); color:#9aa0a8; font-size:.6rem; cursor:pointer; display:none; }
+  .ir-x.show { display:inline-block; }
   .meter { flex:1; height:8px; border-radius:4px; background:#060806; border:1px solid rgba(0,0,0,.6); overflow:hidden; }
   .meter i { display:block; height:100%; width:0%; background:linear-gradient(90deg,#4caf50,#e8b64c 72%,#e0684c); transition:width .05s linear; }
 
@@ -214,6 +225,12 @@
             <canvas class="scope" id="scope" width="360" height="52"></canvas>
             <div class="krow" id="ampKnobs"></div>
             <div class="amp-row"><button class="toggle" id="cab">CAB SIM</button><div class="meter"><i id="meterFill"></i></div></div>
+            <div class="amp-row ir-row">
+              <button class="toggle" id="irOn">IR</button>
+              <button class="ir-btn" id="irLoad">LOAD IR</button>
+              <span class="ir-name" id="irName">no cabinet</span>
+              <button class="ir-x" id="irClear" title="remove IR">✕</button>
+            </div>
           </div>
         </div>
         <div class="cab" id="cabVisual"><span class="cab-badge" id="badge">CLEAN</span></div>
@@ -320,6 +337,26 @@
   cabEl.onclick=()=>cab.setValue(!cab.getValue());
   const paintCab=()=>cabEl.classList.toggle("on",cab.getValue());
   cab.valueChangedEvent.addListener(paintCab); paintCab();
+
+  // IR cabinet loader (real speaker convolution)
+  const irOn=Juce.getToggleState("irOn");
+  const irOnEl=document.getElementById("irOn");
+  irOnEl.onclick=()=>irOn.setValue(!irOn.getValue());
+  const paintIrOn=()=>irOnEl.classList.toggle("on",irOn.getValue());
+  irOn.valueChangedEvent.addListener(paintIrOn); paintIrOn();
+
+  const irNameEl=document.getElementById("irName");
+  const irClearEl=document.getElementById("irClear");
+  const loadIRfn=Juce.getNativeFunction("loadIR");
+  const clearIRfn=Juce.getNativeFunction("clearIR");
+  window.__irName=(name, loaded)=>{
+    irNameEl.textContent = loaded && name ? name : "no cabinet";
+    irNameEl.classList.toggle("loaded", !!loaded);
+    irClearEl.classList.toggle("show", !!loaded);
+  };
+  document.getElementById("irLoad").onclick=()=>{ try{ loadIRfn(); }catch(e){} };
+  irClearEl.onclick=()=>{ try{ clearIRfn(); }catch(e){} };
+  try { Juce.getNativeFunction("requestIR")(); } catch(e){}   // sync current IR on open
 
   // pedalboard — two rows of stompboxes
   const rowTop=document.getElementById("rowTop");
