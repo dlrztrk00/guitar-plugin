@@ -41,6 +41,20 @@
     box-shadow:0 0 12px -6px var(--accent);
   }
 
+  /* A/B + user presets */
+  .ab { display:inline-flex; gap:4px; align-items:center; }
+  .abtn { min-width:26px; padding:5px 0; border-radius:7px; border:1px solid var(--accent);
+    background:color-mix(in oklab,var(--accent) 10%,#14171a); color:#eef1f4; font-family:inherit;
+    font-size:.7rem; font-weight:700; cursor:pointer; }
+  .abtn.on { background:var(--accent); color:#141210; }
+  .mini2 { padding:5px 8px; border-radius:7px; border:1px solid rgba(255,255,255,.18);
+    background:linear-gradient(#2c2e33,#17181c); color:#d7dbe0; font-family:inherit; font-size:.62rem;
+    letter-spacing:.06em; cursor:pointer; }
+  .mini2:active { transform:translateY(1px); }
+  .uname { width:80px; background:#14171a; color:#eef1f4; border:1px solid rgba(255,255,255,.2);
+    border-radius:7px; padding:4px 7px; font-family:inherit; font-size:.66rem; }
+  .uname::placeholder { color:#5f6a63; }
+
   /* amp head */
   .amp {
     border-radius:12px 12px 5px 5px; padding:12px 12px 12px; margin-top:4px;
@@ -215,6 +229,15 @@
     <div class="pickers">
       <label class="pick"><span>ARTIST</span><select id="artist"></select></label>
       <label class="pick" id="songWrap"><span>SONG</span><select id="song"></select></label>
+      <label class="pick"><span>A/B</span>
+        <span class="ab"><button id="slotA" class="abtn on">A</button><button id="slotB" class="abtn">B</button><button id="abCopy" class="mini2" title="copy to the other slot">COPY→</button></span>
+      </label>
+      <label class="pick"><span>USER</span>
+        <select id="userSel"><option value="">— recall —</option></select>
+        <input id="userName" class="uname" placeholder="name" spellcheck="false" />
+        <button id="userSave" class="mini2">SAVE</button>
+        <button id="userDel" class="mini2">DEL</button>
+      </label>
     </div>
 
     <div class="rig">
@@ -555,6 +578,69 @@
   songSel.onchange=()=>applyTone(ARTISTS[+artistSel.value].songs[+songSel.value].t);
 
   loadArtist(0, false); // set skin without stomping the host's saved state on open
+
+  // ---- snapshots: capture / restore every parameter ----
+  const SNAP_SL=["gate","comp","drive","low","mid","high","chorus","delayMix","delayTime","delayFb",
+                 "reverb","level","tremRate","tremDepth","phaserRate","phaserDepth","flangerRate","flangerDepth","boost"];
+  const SNAP_TG=["compOn","driveOn","chorusOn","delayOn","cab","irOn","delaySync",
+                 "tremOn","phaserOn","flangerOn","boostOn"];
+  const SNAP_CB=["distType","delayDiv"];
+  const slState=id=>states[id]||Juce.getSliderState(id);
+  function snapshot(){
+    const s={sl:{},tg:{},cb:{}};
+    SNAP_SL.forEach(id=>{ try{ s.sl[id]=slState(id).getNormalisedValue(); }catch(e){} });
+    SNAP_TG.forEach(id=>{ try{ s.tg[id]=Juce.getToggleState(id).getValue(); }catch(e){} });
+    SNAP_CB.forEach(id=>{ try{ s.cb[id]=Juce.getComboBoxState(id).getChoiceIndex(); }catch(e){} });
+    return s;
+  }
+  function restore(s){
+    if(!s) return;
+    for(const id in s.sl) try{ slState(id).setNormalisedValue(s.sl[id]); }catch(e){}
+    for(const id in s.tg) try{ Juce.getToggleState(id).setValue(s.tg[id]); }catch(e){}
+    for(const id in s.cb) try{ Juce.getComboBoxState(id).setChoiceIndex(s.cb[id]); }catch(e){}
+  }
+
+  // ---- A/B compare: two live slots you flip between ----
+  const slotAEl=document.getElementById("slotA");
+  const slotBEl=document.getElementById("slotB");
+  const abCopyEl=document.getElementById("abCopy");
+  let slots={A:null,B:null}, active="A";
+  const paintAB=()=>{ slotAEl.classList.toggle("on",active==="A"); slotBEl.classList.toggle("on",active==="B"); };
+  function setActive(which){
+    if(which===active) return;
+    slots[active]=snapshot();                    // stash current edits into the current slot
+    active=which;
+    if(slots[which]==null) slots[which]=snapshot(); // first visit: seed from current so both start equal
+    else restore(slots[which]);
+    paintAB();
+  }
+  slotAEl.onclick=()=>setActive("A");
+  slotBEl.onclick=()=>setActive("B");
+  abCopyEl.onclick=()=>{ slots[active==="A"?"B":"A"]=snapshot(); }; // duplicate current into the other slot
+
+  // ---- named user presets (stored in the browser, best-effort) ----
+  const LS="soundbox.presets.v1";
+  const userSel=document.getElementById("userSel");
+  const userName=document.getElementById("userName");
+  const loadStore=()=>{ try{ return JSON.parse(localStorage.getItem(LS))||{}; }catch(e){ return {}; } };
+  const saveStore=o=>{ try{ localStorage.setItem(LS,JSON.stringify(o)); }catch(e){} };
+  function refreshUser(sel){
+    const store=loadStore();
+    userSel.innerHTML='<option value="">— recall —</option>';
+    Object.keys(store).sort().forEach(n=>{ const o=el("option"); o.value=n; o.textContent=n; userSel.appendChild(o); });
+    if(sel) userSel.value=sel;
+  }
+  document.getElementById("userSave").onclick=()=>{
+    const name=(userName.value||"").trim(); if(!name) return;
+    const store=loadStore(); store[name]=snapshot(); saveStore(store);
+    refreshUser(name); userName.value="";
+  };
+  userSel.onchange=()=>{ const store=loadStore(); if(store[userSel.value]) restore(store[userSel.value]); };
+  document.getElementById("userDel").onclick=()=>{
+    const n=userSel.value; if(!n) return;
+    const store=loadStore(); delete store[n]; saveStore(store); refreshUser();
+  };
+  refreshUser();
 </script>
 </body>
 </html>
