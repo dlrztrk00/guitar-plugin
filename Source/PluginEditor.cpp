@@ -35,7 +35,13 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
                    .withOptionsFrom (compOnRelay)
                    .withOptionsFrom (driveOnRelay)
                    .withOptionsFrom (chorusOnRelay)
-                   .withOptionsFrom (delayOnRelay))
+                   .withOptionsFrom (delayOnRelay)
+                   .withOptionsFrom (tremRateRelay)
+                   .withOptionsFrom (tremDepthRelay)
+                   .withOptionsFrom (phaserRateRelay)
+                   .withOptionsFrom (phaserDepthRelay)
+                   .withOptionsFrom (tremOnRelay)
+                   .withOptionsFrom (phaserOnRelay))
 {
     auto& apvts = proc.apvts;
     auto bindSlider = [&] (const juce::String& id, juce::WebSliderRelay& relay)
@@ -56,6 +62,10 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
     bindSlider ("chorus", chorusRelay);
     bindSlider ("reverb", reverbRelay);
     bindSlider ("level", levelRelay);
+    bindSlider ("tremRate", tremRateRelay);
+    bindSlider ("tremDepth", tremDepthRelay);
+    bindSlider ("phaserRate", phaserRateRelay);
+    bindSlider ("phaserDepth", phaserDepthRelay);
 
     distAtt = std::make_unique<juce::WebComboBoxParameterAttachment> (
         *apvts.getParameter ("distType"), distRelay, nullptr);
@@ -73,13 +83,15 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
     bindToggle ("driveOn", driveOnRelay);
     bindToggle ("chorusOn", chorusOnRelay);
     bindToggle ("delayOn", delayOnRelay);
+    bindToggle ("tremOn", tremOnRelay);
+    bindToggle ("phaserOn", phaserOnRelay);
 
     addAndMakeVisible (webView);
     webView.goToURL (juce::WebBrowserComponent::getResourceProviderRoot());
 
     setResizable (true, true);
-    setResizeLimits (720, 380, 1600, 950);
-    setSize (960, 470);
+    setResizeLimits (760, 440, 1600, 1000);
+    setSize (1000, 500);
 
     startTimerHz (24);
 }

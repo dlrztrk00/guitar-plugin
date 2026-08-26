@@ -59,6 +59,17 @@ SoundBoxProcessor::createParameterLayout()
     layout.add (std::make_unique<AudioParameterBool> (ParameterID { "delaySync", 1 }, "Delay Sync", false));
     layout.add (std::make_unique<AudioParameterChoice> (ParameterID { "delayDiv", 1 }, "Delay Division",
         StringArray { "1/4", "1/8", "1/8.", "1/16", "1/4." }, 1));
+    layout.add (std::make_unique<AudioParameterBool>  (ParameterID { "tremOn", 1 }, "Tremolo On", true));
+    layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "tremRate", 1 }, "Tremolo Rate",
+        NormalisableRange<float> (0.1f, 12.0f, 0.01f), 5.0f));
+    layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "tremDepth", 1 }, "Tremolo Depth",
+        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
+    layout.add (std::make_unique<AudioParameterBool>  (ParameterID { "phaserOn", 1 }, "Phaser On", true));
+    layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "phaserRate", 1 }, "Phaser Rate",
+        NormalisableRange<float> (0.05f, 8.0f, 0.01f), 0.8f));
+    layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "phaserDepth", 1 }, "Phaser Depth",
+        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
+
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "reverb", 1 }, "Reverb",
         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "level", 1 }, "Level",
@@ -103,6 +114,11 @@ void SoundBoxProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     chorus.setDepth (0.3f);
     chorus.setCentreDelay (18.0f);
     chorus.setFeedback (0.0f);
+
+    phaser.prepare (spec);
+    phaser.setCentreFrequency (600.0f);
+    phaser.setFeedback (0.4f);
+    tremPhase = 0.0;
 
     delayLine.setMaximumDelayInSamples ((int) (sampleRate * 1.0) + 2);
     delayLine.prepare (spec);
@@ -227,6 +243,32 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
             case 2: applyChorus(); break;
             default: applyDelay(); break;
         }
+    }
+
+    // tremolo (amplitude LFO) — same modulation across channels
+    if (get ("tremOn") > 0.5f && get ("tremDepth") > 0.001f)
+    {
+        const double inc = juce::MathConstants<double>::twoPi * get ("tremRate") / fs;
+        const float depth = get ("tremDepth");
+        const int numSm = buffer.getNumSamples();
+        const int numCh = buffer.getNumChannels();
+        for (int i = 0; i < numSm; ++i)
+        {
+            const float g = 1.0f - depth * 0.5f * (1.0f - (float) std::cos (tremPhase));
+            for (int ch = 0; ch < numCh; ++ch)
+                buffer.getWritePointer (ch)[i] *= g;
+            tremPhase += inc;
+            if (tremPhase > juce::MathConstants<double>::twoPi) tremPhase -= juce::MathConstants<double>::twoPi;
+        }
+    }
+
+    // phaser
+    if (get ("phaserOn") > 0.5f && get ("phaserDepth") > 0.001f)
+    {
+        phaser.setRate (get ("phaserRate"));
+        phaser.setDepth (get ("phaserDepth"));
+        phaser.setMix (0.5f);
+        phaser.process (ctx);
     }
 
     // always-on 70 Hz high-pass: kills DC, rumble and most mains hum (ground noise)

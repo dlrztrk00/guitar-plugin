@@ -61,6 +61,8 @@ private:
     Filter lowShelf, midPeak, highShelf;                          // EQ
     Filter cabHP, cabLP, cabDip;                                  // cabinet sim
     juce::dsp::Chorus<float> chorus;
+    juce::dsp::Phaser<float> phaser;
+    double tremPhase = 0.0;
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine { 96000 };
     juce::dsp::Reverb reverb;
     juce::dsp::Limiter<float> limiter;
