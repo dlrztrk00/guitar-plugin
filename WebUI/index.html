@@ -123,6 +123,8 @@
   .p-delay  { --tex: linear-gradient(180deg, rgba(0,0,0,.22) 0 30%, transparent 30% 70%, rgba(0,0,0,.14) 70%); border-radius:7px; }
   .p-trem   { --tex: repeating-linear-gradient(90deg, rgba(0,0,0,.10) 0 3px, transparent 3px 9px); border-radius:14px 14px 8px 8px; }
   .p-phaser { --tex: repeating-linear-gradient(45deg, rgba(255,255,255,.07) 0 4px, rgba(0,0,0,.06) 4px 10px); border-radius:10px; }
+  .p-flanger { --tex: repeating-radial-gradient(circle at 50% 0%, rgba(255,255,255,.06) 0 3px, transparent 3px 7px); border-radius:8px 8px 15px 15px; }
+  .p-boost  { --tex: linear-gradient(180deg, rgba(255,255,255,.14) 0 20%, transparent 20%); border-radius:16px; }
 
   /* drag handle to reorder */
   .sb-grip { align-self:stretch; height:15px; margin:-9px -3px 3px; border-radius:9px 9px 4px 4px;
@@ -380,6 +382,11 @@
     makeKnob(k,"phaserRate","RATE","hz","#c264a8");
     makeKnob(k,"phaserDepth","DEPTH","pct","#c264a8");
   });
+  stompbox(rowBottom,"JET","#5f8fd0","flangerOn",(k)=>{
+    makeKnob(k,"flangerRate","RATE","hz","#5f8fd0");
+    makeKnob(k,"flangerDepth","DEPTH","pct","#5f8fd0");
+  });
+  stompbox(rowBottom,"BOOST","#d0a24a","boostOn",(k)=>makeKnob(k,"boost","GAIN","pct","#d0a24a"));
 
   // ---- presets (artist → song → tone) ----
   const D=(o)=>Object.assign({drive:0,low:0,mid:0,high:0,delayMix:0,delayTime:0.3,delayFb:0.35,reverb:0,gate:0,cab:false,chorus:0,comp:0,dist:0},o);

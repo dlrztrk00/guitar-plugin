@@ -69,6 +69,14 @@ SoundBoxProcessor::createParameterLayout()
         NormalisableRange<float> (0.05f, 8.0f, 0.01f), 0.8f));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "phaserDepth", 1 }, "Phaser Depth",
         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
+    layout.add (std::make_unique<AudioParameterBool>  (ParameterID { "flangerOn", 1 }, "Flanger On", true));
+    layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "flangerRate", 1 }, "Flanger Rate",
+        NormalisableRange<float> (0.05f, 6.0f, 0.01f), 0.3f));
+    layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "flangerDepth", 1 }, "Flanger Depth",
+        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
+    layout.add (std::make_unique<AudioParameterBool>  (ParameterID { "boostOn", 1 }, "Boost On", true));
+    layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "boost", 1 }, "Boost",
+        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
 
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "reverb", 1 }, "Reverb",
         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
@@ -120,6 +128,10 @@ void SoundBoxProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     phaser.setFeedback (0.4f);
     tremPhase = 0.0;
 
+    flanger.prepare (spec);
+    flanger.setCentreDelay (2.0f);
+    flanger.setFeedback (0.65f);
+
     delayLine.setMaximumDelayInSamples ((int) (sampleRate * 1.0) + 2);
     delayLine.prepare (spec);
     delayLine.reset();
@@ -159,6 +171,11 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         gate.setThreshold (juce::Decibels::gainToDecibels (juce::jmax (1.0e-4f, gateAmt * gateAmt * 0.5f)));
         gate.process (ctx);
     }
+
+    // clean boost (drives the whole chain harder — good for solos)
+    const float boostAmt = get ("boost");
+    if (get ("boostOn") > 0.5f && boostAmt > 0.001f)
+        buffer.applyGain (juce::Decibels::decibelsToGain (boostAmt * 12.0f));
 
     // ── the four reorderable pedals ──
     auto applyComp = [&]
@@ -269,6 +286,15 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         phaser.setDepth (get ("phaserDepth"));
         phaser.setMix (0.5f);
         phaser.process (ctx);
+    }
+
+    // flanger
+    if (get ("flangerOn") > 0.5f && get ("flangerDepth") > 0.001f)
+    {
+        flanger.setRate (get ("flangerRate"));
+        flanger.setDepth (get ("flangerDepth"));
+        flanger.setMix (0.5f);
+        flanger.process (ctx);
     }
 
     // always-on 70 Hz high-pass: kills DC, rumble and most mains hum (ground noise)
