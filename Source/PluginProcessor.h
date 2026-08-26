@@ -86,6 +86,8 @@ private:
     juce::dsp::Chorus<float> chorus;
     juce::dsp::Chorus<float> flanger;
     juce::dsp::Phaser<float> phaser;
+    juce::dsp::StateVariableTPTFilter<float> wahFilter; // envelope-followed bandpass (auto-wah)
+    float wahEnv = 0.0f;
     double tremPhase = 0.0;
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine { 96000 };
     juce::dsp::Reverb reverb;

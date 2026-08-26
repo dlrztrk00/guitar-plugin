@@ -157,6 +157,7 @@
   .p-phaser { --tex: repeating-linear-gradient(45deg, rgba(255,255,255,.07) 0 4px, rgba(0,0,0,.06) 4px 10px); border-radius:10px; }
   .p-flanger { --tex: repeating-radial-gradient(circle at 50% 0%, rgba(255,255,255,.06) 0 3px, transparent 3px 7px); border-radius:8px 8px 15px 15px; }
   .p-boost  { --tex: linear-gradient(180deg, rgba(255,255,255,.14) 0 20%, transparent 20%); border-radius:16px; }
+  .p-wah    { --tex: repeating-linear-gradient(115deg, rgba(255,255,255,.08) 0 5px, rgba(0,0,0,.07) 5px 12px); border-radius:15px 15px 9px 9px; }
 
   /* drag handle to reorder */
   .sb-grip { align-self:stretch; height:15px; margin:-9px -3px 3px; border-radius:9px 9px 4px 4px;
@@ -490,6 +491,10 @@
     makeKnob(k,"flangerRate","RATE","hz","#5f8fd0");
     makeKnob(k,"flangerDepth","DEPTH","pct","#5f8fd0");
   });
+  stompbox(rowBottom,"CRY","#b0578f","wahOn",(k)=>{
+    makeKnob(k,"wahSens","SENS","pct","#b0578f");
+    makeKnob(k,"wahPeak","PEAK","pct","#b0578f");
+  });
   stompbox(rowBottom,"BOOST","#d0a24a","boostOn",(k)=>makeKnob(k,"boost","GAIN","pct","#d0a24a"));
 
   // ---- presets (artist → song → tone) ----
@@ -581,9 +586,10 @@
 
   // ---- snapshots: capture / restore every parameter ----
   const SNAP_SL=["gate","comp","drive","low","mid","high","chorus","delayMix","delayTime","delayFb",
-                 "reverb","level","tremRate","tremDepth","phaserRate","phaserDepth","flangerRate","flangerDepth","boost"];
+                 "reverb","level","tremRate","tremDepth","phaserRate","phaserDepth","flangerRate","flangerDepth","boost",
+                 "wahSens","wahPeak"];
   const SNAP_TG=["compOn","driveOn","chorusOn","delayOn","cab","irOn","delaySync",
-                 "tremOn","phaserOn","flangerOn","boostOn"];
+                 "tremOn","phaserOn","flangerOn","boostOn","wahOn"];
   const SNAP_CB=["distType","delayDiv"];
   const slState=id=>states[id]||Juce.getSliderState(id);
   function snapshot(){

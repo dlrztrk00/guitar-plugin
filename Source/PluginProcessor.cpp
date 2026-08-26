@@ -75,6 +75,11 @@ SoundBoxProcessor::createParameterLayout()
         NormalisableRange<float> (0.05f, 6.0f, 0.01f), 0.3f));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "flangerDepth", 1 }, "Flanger Depth",
         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
+    layout.add (std::make_unique<AudioParameterBool>  (ParameterID { "wahOn", 1 }, "Auto-Wah On", true));
+    layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "wahSens", 1 }, "Wah Sens",
+        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
+    layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "wahPeak", 1 }, "Wah Peak",
+        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f));
     layout.add (std::make_unique<AudioParameterBool>  (ParameterID { "boostOn", 1 }, "Boost On", true));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "boost", 1 }, "Boost",
         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
@@ -132,6 +137,10 @@ void SoundBoxProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     flanger.prepare (spec);
     flanger.setCentreDelay (2.0f);
     flanger.setFeedback (0.65f);
+
+    wahFilter.prepare (spec);
+    wahFilter.setType (juce::dsp::StateVariableTPTFilterType::bandpass);
+    wahEnv = 0.0f;
 
     delayLine.setMaximumDelayInSamples ((int) (sampleRate * 1.0) + 2);
     delayLine.prepare (spec);
@@ -321,6 +330,31 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         flanger.setDepth (get ("flangerDepth"));
         flanger.setMix (0.5f);
         flanger.process (ctx);
+    }
+
+    // auto-wah — a bandpass whose cutoff rides the playing envelope
+    if (get ("wahOn") > 0.5f && get ("wahSens") > 0.001f)
+    {
+        const float sens = get ("wahSens");
+        wahFilter.setResonance (1.0f + get ("wahPeak") * 7.0f);
+        const int nSm = buffer.getNumSamples();
+        const int nCh = buffer.getNumChannels();
+        for (int i = 0; i < nSm; ++i)
+        {
+            float mag = 0.0f;
+            for (int ch = 0; ch < nCh; ++ch)
+                mag = juce::jmax (mag, std::abs (buffer.getReadPointer (ch)[i]));
+            // envelope follower: fast attack, slower release
+            const float coeff = (mag > wahEnv) ? 0.25f : 0.02f;
+            wahEnv += (mag - wahEnv) * coeff;
+            const float cf = juce::jlimit (250.0f, 3000.0f, 300.0f + sens * wahEnv * 4500.0f);
+            wahFilter.setCutoffFrequency (cf);
+            for (int ch = 0; ch < nCh; ++ch)
+            {
+                auto* d = buffer.getWritePointer (ch);
+                d[i] = wahFilter.processSample (ch, d[i]);
+            }
+        }
     }
 
     // always-on 70 Hz high-pass: kills DC, rumble and most mains hum (ground noise)

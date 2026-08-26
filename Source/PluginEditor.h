@@ -31,7 +31,8 @@ private:
         chorusRelay { "chorus" }, reverbRelay { "reverb" }, levelRelay { "level" },
         tremRateRelay { "tremRate" }, tremDepthRelay { "tremDepth" },
         phaserRateRelay { "phaserRate" }, phaserDepthRelay { "phaserDepth" },
-        flangerRateRelay { "flangerRate" }, flangerDepthRelay { "flangerDepth" }, boostRelay { "boost" };
+        flangerRateRelay { "flangerRate" }, flangerDepthRelay { "flangerDepth" }, boostRelay { "boost" },
+        wahSensRelay { "wahSens" }, wahPeakRelay { "wahPeak" };
     juce::WebComboBoxRelay     distRelay { "distType" };
     juce::WebComboBoxRelay     delayDivRelay { "delayDiv" };
     juce::WebToggleButtonRelay delaySyncRelay { "delaySync" };
@@ -40,7 +41,7 @@ private:
     juce::WebToggleButtonRelay compOnRelay { "compOn" }, driveOnRelay { "driveOn" },
         chorusOnRelay { "chorusOn" }, delayOnRelay { "delayOn" },
         tremOnRelay { "tremOn" }, phaserOnRelay { "phaserOn" },
-        flangerOnRelay { "flangerOn" }, boostOnRelay { "boostOn" };
+        flangerOnRelay { "flangerOn" }, boostOnRelay { "boostOn" }, wahOnRelay { "wahOn" };
 
     juce::WebBrowserComponent webView;
 

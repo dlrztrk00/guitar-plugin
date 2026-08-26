@@ -79,6 +79,9 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
                    .withOptionsFrom (flangerRateRelay)
                    .withOptionsFrom (flangerDepthRelay)
                    .withOptionsFrom (boostRelay)
+                   .withOptionsFrom (wahSensRelay)
+                   .withOptionsFrom (wahPeakRelay)
+                   .withOptionsFrom (wahOnRelay)
                    .withOptionsFrom (tremOnRelay)
                    .withOptionsFrom (phaserOnRelay)
                    .withOptionsFrom (flangerOnRelay)
@@ -110,6 +113,8 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
     bindSlider ("flangerRate", flangerRateRelay);
     bindSlider ("flangerDepth", flangerDepthRelay);
     bindSlider ("boost", boostRelay);
+    bindSlider ("wahSens", wahSensRelay);
+    bindSlider ("wahPeak", wahPeakRelay);
 
     distAtt = std::make_unique<juce::WebComboBoxParameterAttachment> (
         *apvts.getParameter ("distType"), distRelay, nullptr);
@@ -132,6 +137,7 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
     bindToggle ("phaserOn", phaserOnRelay);
     bindToggle ("flangerOn", flangerOnRelay);
     bindToggle ("boostOn", boostOnRelay);
+    bindToggle ("wahOn", wahOnRelay);
 
     addAndMakeVisible (webView);
     webView.goToURL (juce::WebBrowserComponent::getResourceProviderRoot());
