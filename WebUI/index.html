@@ -14,12 +14,13 @@
       linear-gradient(180deg,#0a0c10 0%,#0b0d10 55%,#151009 100%);
     color:var(--ink);
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    user-select:none; -webkit-user-select:none; overflow-x:hidden;
+    user-select:none; -webkit-user-select:none; overflow:hidden;
   }
-  .wrap { padding:12px 18px 16px; max-width:940px; margin:0 auto; }
+  .wrap { padding:10px 18px 12px; max-width:940px; margin:0 auto;
+    height:100%; display:flex; flex-direction:column; }
 
   /* landscape: amp+cab on the left, pedalboard (wider) on the right */
-  .rig { display:flex; gap:16px; align-items:stretch; margin-top:4px; }
+  .rig { display:flex; gap:16px; align-items:stretch; margin-top:4px; flex:1 1 auto; min-height:0; }
   .left { flex:1 1 0; min-width:300px; display:flex; flex-direction:column; }
   .right { flex:1.35 1 0; min-width:360px; display:flex; }
   header { display:flex; align-items:baseline; gap:.5rem; }
@@ -28,7 +29,8 @@
   .sub { font-size:.58rem; color:#7f8a78; }
 
   /* pickers */
-  .pickers { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
+  .pickers { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0; flex:0 0 auto; }
+  header { flex:0 0 auto; }
   .pick { display:flex; align-items:center; gap:6px; }
   .pick span { font-size:.58rem; letter-spacing:.14em; color:#7f8a78; }
   select {
@@ -85,7 +87,7 @@
 
   /* pedalboard — two rows of tall pedals (drag to reorder within a row) */
   .board {
-    flex:1 1 auto; display:flex; flex-direction:column; justify-content:center; gap:26px; padding:18px 12px;
+    flex:1 1 auto; min-height:0; overflow:auto; display:flex; flex-direction:column; justify-content:center; gap:22px; padding:16px 12px;
     border-radius:10px;
     background:repeating-linear-gradient(180deg,#34383f 0 9px,#2a2d33 9px 12px,#23262b 12px 21px,#191b1f 21px 24px);
     border:1px solid rgba(0,0,0,.7);
