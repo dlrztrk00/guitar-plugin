@@ -35,6 +35,7 @@ private:
         wahSensRelay { "wahSens" }, wahPeakRelay { "wahPeak" };
     juce::WebComboBoxRelay     distRelay { "distType" };
     juce::WebComboBoxRelay     delayDivRelay { "delayDiv" };
+    juce::WebComboBoxRelay     reverbTypeRelay { "reverbType" };
     juce::WebToggleButtonRelay delaySyncRelay { "delaySync" };
     juce::WebToggleButtonRelay cabRelay  { "cab" };
     juce::WebToggleButtonRelay irOnRelay { "irOn" };
@@ -47,7 +48,7 @@ private:
 
     std::vector<std::unique_ptr<juce::WebSliderParameterAttachment>> sliderAtts;
     std::vector<std::unique_ptr<juce::WebToggleButtonParameterAttachment>> toggleAtts;
-    std::unique_ptr<juce::WebComboBoxParameterAttachment> distAtt, delayDivAtt;
+    std::unique_ptr<juce::WebComboBoxParameterAttachment> distAtt, delayDivAtt, reverbTypeAtt;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SoundBoxEditor)
 };

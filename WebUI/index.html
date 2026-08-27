@@ -83,6 +83,10 @@
   .amp-photo { width:36px; height:24px; border-radius:4px; background:#0d0f0c center/cover;
     border:1px solid rgba(255,255,255,.18); box-shadow:0 1px 3px rgba(0,0,0,.6); }
   .ir-row { gap:7px; }
+  .rv-row { gap:8px; }
+  .rv-lab { font-size:.56rem; letter-spacing:.14em; color:#7f8a78; }
+  .rv-sel { flex:1; appearance:none; -webkit-appearance:none; background:#14171a; color:#eef1f4;
+    border:1px solid rgba(255,255,255,.2); border-radius:7px; padding:4px 8px; font-family:inherit; font-size:.64rem; cursor:pointer; }
   .ir-btn { padding:4px 10px; border-radius:7px; border:1px solid rgba(255,255,255,.16);
     background:linear-gradient(#2c2e33,#17181c); color:#d7dbe0; font-family:inherit; font-size:.58rem;
     letter-spacing:.1em; cursor:pointer; }
@@ -255,6 +259,7 @@
               <span class="ir-name" id="irName">no cabinet</span>
               <button class="ir-x" id="irClear" title="remove IR">✕</button>
             </div>
+            <div class="amp-row rv-row"><span class="rv-lab">REVERB</span><select id="reverbType" class="rv-sel"></select></div>
           </div>
         </div>
         <div class="cab" id="cabVisual"><span class="cab-badge" id="badge">CLEAN</span></div>
@@ -381,6 +386,16 @@
   document.getElementById("irLoad").onclick=()=>{ try{ loadIRfn(); }catch(e){} };
   irClearEl.onclick=()=>{ try{ clearIRfn(); }catch(e){} };
   try { Juce.getNativeFunction("requestIR")(); } catch(e){}   // sync current IR on open
+
+  // reverb type (Room / Hall / Plate / Spring)
+  const rvType=Juce.getComboBoxState("reverbType");
+  const rvSel=document.getElementById("reverbType");
+  const rvChoices=(rvType.properties&&rvType.properties.choices)||["Room","Hall","Plate","Spring"];
+  rvChoices.forEach((c,i)=>{ const o=el("option"); o.value=i; o.textContent=c; rvSel.appendChild(o); });
+  rvSel.onchange=()=>rvType.setChoiceIndex(+rvSel.value);
+  const paintRv=()=>{ rvSel.value=rvType.getChoiceIndex(); };
+  rvType.valueChangedEvent.addListener(paintRv);
+  rvType.propertiesChangedEvent.addListener(paintRv); paintRv();
 
   // pedalboard — two rows of stompboxes
   const rowTop=document.getElementById("rowTop");
@@ -590,7 +605,7 @@
                  "wahSens","wahPeak"];
   const SNAP_TG=["compOn","driveOn","chorusOn","delayOn","cab","irOn","delaySync",
                  "tremOn","phaserOn","flangerOn","boostOn","wahOn"];
-  const SNAP_CB=["distType","delayDiv"];
+  const SNAP_CB=["distType","delayDiv","reverbType"];
   const slState=id=>states[id]||Juce.getSliderState(id);
   function snapshot(){
     const s={sl:{},tg:{},cb:{}};

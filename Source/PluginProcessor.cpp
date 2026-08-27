@@ -86,6 +86,8 @@ SoundBoxProcessor::createParameterLayout()
 
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "reverb", 1 }, "Reverb",
         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
+    layout.add (std::make_unique<AudioParameterChoice> (ParameterID { "reverbType", 1 }, "Reverb Type",
+        StringArray { "Room", "Hall", "Plate", "Spring" }, 1));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "level", 1 }, "Level",
         NormalisableRange<float> (0.0f, 1.5f, 0.001f), 1.0f));
 
@@ -385,9 +387,13 @@ void SoundBoxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     if (rvAmt > 0.001f)
     {
         juce::Reverb::Parameters rp;
-        rp.roomSize = 0.75f;
-        rp.damping  = 0.4f;
-        rp.width    = 1.0f;
+        switch ((int) get ("reverbType"))
+        {
+            case 0:  rp.roomSize = 0.50f; rp.damping = 0.50f; rp.width = 0.90f; break; // Room
+            case 2:  rp.roomSize = 0.62f; rp.damping = 0.15f; rp.width = 1.00f; break; // Plate (bright, dense)
+            case 3:  rp.roomSize = 0.40f; rp.damping = 0.62f; rp.width = 0.55f; break; // Spring (dark, narrow)
+            default: rp.roomSize = 0.85f; rp.damping = 0.30f; rp.width = 1.00f; break; // Hall (big)
+        }
         rp.dryLevel = 1.0f;
         rp.wetLevel = rvAmt;
         reverb.setParameters (rp);

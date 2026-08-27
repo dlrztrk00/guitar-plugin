@@ -65,6 +65,7 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
                    .withOptionsFrom (levelRelay)
                    .withOptionsFrom (distRelay)
                    .withOptionsFrom (delayDivRelay)
+                   .withOptionsFrom (reverbTypeRelay)
                    .withOptionsFrom (delaySyncRelay)
                    .withOptionsFrom (cabRelay)
                    .withOptionsFrom (irOnRelay)
@@ -120,6 +121,8 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
         *apvts.getParameter ("distType"), distRelay, nullptr);
     delayDivAtt = std::make_unique<juce::WebComboBoxParameterAttachment> (
         *apvts.getParameter ("delayDiv"), delayDivRelay, nullptr);
+    reverbTypeAtt = std::make_unique<juce::WebComboBoxParameterAttachment> (
+        *apvts.getParameter ("reverbType"), reverbTypeRelay, nullptr);
 
     auto bindToggle = [&] (const juce::String& id, juce::WebToggleButtonRelay& relay)
     {
