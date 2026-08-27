@@ -594,10 +594,21 @@
     document.getElementById("songWrap").style.display = a.songs.length>1 ? "" : "none";
     if (applyFirst) applyTone(a.songs[0].t);
   }
-  artistSel.onchange=()=>loadArtist(+artistSel.value);
-  songSel.onchange=()=>applyTone(ARTISTS[+artistSel.value].songs[+songSel.value].t);
+  const setSelFn=Juce.getNativeFunction("setSel");
+  const pushSel=()=>{ try{ setSelFn((+artistSel.value)||0, (+songSel.value)||0); }catch(e){} };
+  artistSel.onchange=()=>{ loadArtist(+artistSel.value); pushSel(); };
+  songSel.onchange=()=>{ applyTone(ARTISTS[+artistSel.value].songs[+songSel.value].t); pushSel(); };
 
-  loadArtist(0, false); // set skin without stomping the host's saved state on open
+  // restore the remembered artist/song view on open — params already hold the tone,
+  // so we set the dropdowns + skin WITHOUT re-applying (keeps any manual knob tweaks).
+  function restoreView(sel){
+    const a=Math.max(0, Math.min(ARTISTS.length-1, Array.isArray(sel)?(sel[0]|0):0));
+    artistSel.value=a; loadArtist(a, false);
+    const s=Math.max(0, Math.min(ARTISTS[a].songs.length-1, Array.isArray(sel)?(sel[1]|0):0));
+    songSel.value=s;
+  }
+  try { Juce.getNativeFunction("getSel")().then(restoreView).catch(()=>restoreView(null)); }
+  catch(e){ restoreView(null); }
 
   // ---- snapshots: capture / restore every parameter ----
   const SNAP_SL=["gate","comp","drive","low","mid","high","chorus","delayMix","delayTime","delayFb",

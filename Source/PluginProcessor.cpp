@@ -470,6 +470,8 @@ void SoundBoxProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     auto state = apvts.copyState();
     state.setProperty ("irPath", irPath, nullptr);
+    state.setProperty ("uiArtist", uiArtist.load(), nullptr);
+    state.setProperty ("uiSong",   uiSong.load(),   nullptr);
     if (auto xml = state.createXml())
         copyXmlToBinary (*xml, destData);
 }
@@ -483,6 +485,8 @@ void SoundBoxProcessor::setStateInformation (const void* data, int sizeInBytes)
         const auto p = tree.getProperty ("irPath").toString();
         if (p.isNotEmpty())
             loadIR (juce::File (p));
+        uiArtist.store ((int) tree.getProperty ("uiArtist", 0));
+        uiSong.store   ((int) tree.getProperty ("uiSong",   0));
     }
 }
 

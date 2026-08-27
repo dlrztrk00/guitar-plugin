@@ -53,6 +53,10 @@ public:
     // output peak level (0..1), read by the editor's meter
     std::atomic<float> outPeak { 0.0f };
 
+    // remembered UI selection (artist/song index) so the view survives reopening
+    std::atomic<int> uiArtist { 0 };
+    std::atomic<int> uiSong   { 0 };
+
     // live spectrum for the amp screen — log-spaced bands, 0..1, read by the editor
     static constexpr int fftOrder = 11;          // 2048-point FFT
     static constexpr int fftSize  = 1 << fftOrder;

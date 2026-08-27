@@ -51,6 +51,24 @@ SoundBoxEditor::SoundBoxEditor (SoundBoxProcessor& p)
                            pushIRName();
                            complete (juce::var());
                        })
+                   .withNativeFunction (juce::Identifier ("setSel"),
+                       [this] (const juce::Array<juce::var>& args, auto complete)
+                       {
+                           if (args.size() >= 2)
+                           {
+                               proc.uiArtist.store ((int) args[0]);
+                               proc.uiSong.store   ((int) args[1]);
+                           }
+                           complete (juce::var());
+                       })
+                   .withNativeFunction (juce::Identifier ("getSel"),
+                       [this] (const juce::Array<juce::var>&, auto complete)
+                       {
+                           juce::Array<juce::var> r;
+                           r.add (proc.uiArtist.load());
+                           r.add (proc.uiSong.load());
+                           complete (juce::var (r));
+                       })
                    .withOptionsFrom (gateRelay)
                    .withOptionsFrom (compRelay)
                    .withOptionsFrom (driveRelay)
